@@ -1,0 +1,1667 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Audio;
+using Microsoft.Xna.Framework.Content;
+using Microsoft.Xna.Framework.GamerServices;
+using Microsoft.Xna.Framework.Graphics;
+using Microsoft.Xna.Framework.Input;
+using Microsoft.Xna.Framework.Media;
+
+namespace Project_Slug
+{
+    class Enemy
+    {
+
+        #region variables
+        public Rectangle myBox;         // this is the bounding box (collision box) of our Enemy
+        public Rectangle currentGroundBox;
+
+        public static Texture2D box;     //this holds all the different textures
+        public static Texture2D shyGuy;     //this holds all the different textures
+        public static Texture2D angryLakitu;
+        public static Texture2D gunTexture;     //this holds all the different gun textures
+        public static Texture2D pistolBulletTexture;     //this holds all the different gun textures
+        public static Texture2D assaultRifle;
+        public static Texture2D assaultRifleBullet;
+        public static Texture2D sniperRifle;
+        public static Texture2D sniperBullet;
+        public static Texture2D goombaTexture;
+        public static Texture2D flamethrower;
+        public static Texture2D bloodSplatter;
+        public static Texture2D deathBlood;
+        public static Texture2D hammerBro;
+        public static Texture2D bomb;
+        public static Texture2D sparkTexture;
+        public static Texture2D smokeTexture;
+        public static Texture2D explosionTexture;
+        public static Texture2D egg;
+        public static Texture2D yoshi;
+        public static Texture2D tower;
+        public static Texture2D wand;
+        public static Texture2D star;
+        public static Texture2D mario;
+        public static Texture2D HMG;
+        public static Texture2D marioBullet;
+        public static Texture2D blank;
+        public static Texture2D bobOmb;
+
+
+        public static SoundEffect pistolSound;
+        public static SoundEffect jumpSound;
+        public static SoundEffect doubleJumpSound;
+        public static SoundEffect assaultRifleSound;
+        public static SoundEffect neverShot;
+        public static SoundEffect yippyKaiYay;
+        public static SoundEffect grenadeThrowSound;
+        public static SoundEffect grenadeBounceSound;
+        public static SoundEffect explosionSound1;
+        public static SoundEffect explosionSound2;
+
+        
+        public bool isOnGround;
+        public bool wasOnGround;//a variable to know the Enemy is on te ground
+        
+        public bool canDoubleJump;
+        public bool seen = false;
+        public bool left = false;
+        public bool right = false;
+        public bool special = false;
+        public bool up = false;
+        public bool down = false;
+
+        float shoot = 0;
+        float wait = 0;
+
+        public Vector2 Speed;        //Enemy speed
+        public Vector2 Position;     //Enemy position
+        public Vector2 prevSpeed;
+        
+
+        public int gravity;        //the gravity for maybe space levels? but for now it's just 9 always
+        public int health = 100;
+        public int shotCount = 0;// Enemy's health
+        public int previousHealth = 100;
+        public float targetTime;
+        public float bossFireTime;
+        Random random = new Random();
+        
+
+        // Animations representing the Enemy
+        // I want to have an animation for each different animation, I think that'd make it easier.
+        public Animation[] EnemyAnimation;
+        int activeAnimation;
+        public Animation deathAnimation;
+
+        public Animation[] gunAnimation;
+        public Animation hitAnimation;
+        // keeps track of the current weapon that is being used
+        // 0 = pistol, 1 = auto-rifle, 2 = shotgun ....that's all for now
+        public int currentWeapon;
+        float gunRotation;
+
+        // keeps track of all the ammo
+        // ammo[0] = pistol ammo, ammo[1] = auto-rifle ammo, ammo[2] = shotgun ammo ....that's all for now
+        int[] ammo;
+
+        //this is to flip the Enemy from right to left
+        // 1 = facing right, -1 = facing left
+        float scaleX;
+        float scaleY;
+
+        List<Bullet> bullets = new List<Bullet>();
+        List<Grenade> grenades = new List<Grenade>();
+
+        public struct Spark
+        {
+            public Animation sparkAnimation;
+            public Vector2 Speed;
+
+            public Spark(Animation ani, Vector2 sped)
+            {
+                this.sparkAnimation = ani;
+                this.Speed = sped;
+            }
+        }
+
+        public List<Spark> sparks = new List<Spark>();
+
+        public bool canShoot;
+
+        #endregion
+
+        
+        public void detectGroundCollision(Rectangle otherObject)
+        {
+            //myBox.X = (int)Position.X + (int)Speed.X;
+            //myBox.Y = (int)Position.Y + (int)Speed.Y;
+
+            myBox.X = (int)Position.X;
+            myBox.Y = (int)Position.Y;
+
+            if (myBox.Intersects(otherObject))
+            {
+                //above the ground
+                if ((myBox.Y + 20) < otherObject.Y)
+                {
+                    //Console.WriteLine("above Ground.");
+                    if (((myBox.X + 8) > otherObject.X) && ((myBox.X + 8) < (otherObject.X + otherObject.Width)))
+                    {
+                        currentGroundBox = otherObject;
+                        isOnGround = true;
+                        canDoubleJump = true;
+                        if (Speed.Y >= 0)
+                        {
+                            Speed.Y = 0;
+                            Position.Y = otherObject.Y - 32;
+                        }
+                    }
+                }
+                //below ground
+                else if (Speed.Y < 0 && ((myBox.Y) < (otherObject.Y + otherObject.Height)) && ((myBox.Y) > (otherObject.Y + otherObject.Height + Speed.Y - 2)))
+                {
+                    //Console.WriteLine("below Ground.");
+                    if (((myBox.X + 8) > otherObject.X) && ((myBox.X + 8) < (otherObject.X + otherObject.Width)))
+                    {
+                        Speed.Y = -Speed.Y;
+                        Position.Y = otherObject.Y + otherObject.Height;
+                    }
+                }
+                //next to
+                else
+                {
+                    //Console.WriteLine("beside Ground.");
+                    if (myBox.X > otherObject.X)
+                    {
+                        Speed.X = 0;
+                        Position.X = otherObject.X + otherObject.Width;
+                    }
+                    else
+                    {
+                        Speed.X = 0;
+                        Position.X = otherObject.X - 16;
+                    }
+                }
+
+            }
+            else
+            {
+                //Console.WriteLine("here.");
+                if (isOnGround == true && (otherObject == currentGroundBox))
+                {
+                    //Console.WriteLine("here 2.");
+                    if ((myBox.Y + 20) < otherObject.Y && ((myBox.Y + 32 + Speed.Y) > otherObject.Y))
+                    {
+                        //Console.WriteLine("here 3.");
+                        if (((myBox.X + 8) > otherObject.X) && ((myBox.X + 8) < (otherObject.X + otherObject.Width)))
+                        {
+                            //Console.WriteLine("here 4.");
+                            isOnGround = true;
+                            if (Speed.Y >= 0)
+                            {
+                                Speed.Y = 0;
+                                Position.Y = otherObject.Y - 32;
+                            }
+                        }
+                        else
+                        {
+                            isOnGround = false;
+                        }
+                    }
+                    else
+                    {
+                        isOnGround = false;
+                    }
+                }
+            }
+
+            List<Grenade> grenadeRemoval = new List<Grenade>();
+            foreach (Grenade grenade in grenades) // Loop through grenade List with foreach and update
+            {
+                if (grenade.myBox.Intersects(otherObject))
+                {
+                    SoundEffectInstance sound = grenadeBounceSound.CreateInstance();
+                    sound.Volume = .08f;
+                    sound.Play();
+                    //above the ground
+                    if ((grenade.myBox.Y) < otherObject.Y)
+                    {
+                        //Console.WriteLine("above Ground.");
+                        if (((grenade.myBox.X + 8) > otherObject.X) && ((grenade.myBox.X + 8) < (otherObject.X + otherObject.Width)))
+                        {
+                            grenade.Speed.Y = -grenade.Speed.Y / 3;
+                            grenade.Position.Y = otherObject.Y - 21;
+                        }
+                    }
+                    //below ground
+                    else if (grenade.Speed.Y < 0 && ((grenade.myBox.Y) < (otherObject.Y + otherObject.Height)) && ((grenade.myBox.Y) > (otherObject.Y + otherObject.Height + grenade.Speed.Y - 2)))
+                    {
+                        //Console.WriteLine("below Ground.");
+                        if (((grenade.myBox.X + 8) > otherObject.X) && ((grenade.myBox.X + 8) < (otherObject.X + otherObject.Width)))
+                        {
+                            grenade.Speed.Y = -grenade.Speed.Y;
+                            grenade.Position.Y = otherObject.Y + otherObject.Height;
+                        }
+                    }
+                    //next to
+                    else
+                    {
+                        //Console.WriteLine("beside Ground.");
+                        if (grenade.myBox.X > otherObject.X)
+                        {
+                            grenade.Speed.X = -grenade.Speed.X / 3;
+                            grenade.Position.X = otherObject.X + otherObject.Width;
+                        }
+                        else
+                        {
+                            grenade.Speed.X = -grenade.Speed.X / 3;
+                            grenade.Position.X = otherObject.X - 19;
+                        }
+                    }
+
+                }
+
+
+
+                /*Animation anny = new Animation();
+                anny.Initialize(sparkTexture, new Vector2(grenade.myBox.X, grenade.myBox.Y), 0, 49, 43, 4, 20, Color.White, 1, false);
+
+                anny.Looping = false;
+                double X = grenade.Speed.X;
+                double Y = grenade.Speed.Y;
+                double angle = Math.Atan2(Y, X);
+                anny.rotation = (float)angle;
+
+                Spark spark = new Spark(anny, -grenade.Speed / 2.0f);
+                sparks.Add(spark);
+                grenadeRemoval.Add(grenade);*/
+            }
+        }
+
+        public int detectGroundCollision2(Rectangle otherObject)
+        {
+            int type = 0;          
+            List<Bullet> bulletRemoval = new List<Bullet>();
+
+            foreach (Bullet bullet in bullets) // Loop through bullet List with foreach and update
+            {
+                if (bullet.myBox.Intersects(otherObject))
+                {
+                    bulletRemoval.Add(bullet);
+                    type = bullet.power;
+                    
+                }
+                else if (bullet.lifeTime <= 0)
+                {
+                    bulletRemoval.Add(bullet);
+                }
+            }
+
+            foreach (Bullet bullet in bulletRemoval) // Loop through bullet List with foreach and update
+            {
+                bullets.Remove(bullet);
+            }
+            return type;
+        }
+        public void grenCheck(Rectangle otherObject)
+        {
+            List<Grenade> grenadeRemoval = new List<Grenade>();
+            foreach (Grenade grenade in grenades)
+            {
+                if (grenade.myBox.Intersects(otherObject))
+                {
+                    Bullet bullet = new Bullet(blank, new Rectangle(0, 0, 60, 60), 3, grenade.Position, 0, 1, new Player());
+                    bullet.lifeTime = 0.5f;
+                    bullets.Add(bullet);
+                    bullet = new Bullet(blank, new Rectangle(0, 0, 60, 60), 3, new Vector2(grenade.Position.X, grenade.Position.Y), 0, 1, new Player());
+                    bullet.lifeTime = 0.5f;
+                    bullets.Add(bullet);
+                    bullet = new Bullet(blank, new Rectangle(0, 0, 60, 60), 3, new Vector2(grenade.Position.X -80,grenade.Position.Y), 0, 1, new Player());
+                    bullet.lifeTime = 0.5f;
+                    bullets.Add(bullet);
+                    grenadeRemoval.Add(grenade);
+                    
+                }
+                else if (grenade.lifeTime <= 0)
+                {
+                    grenadeRemoval.Add(grenade);
+                }
+            }
+            foreach (Grenade grenade in grenadeRemoval)
+            {
+                Random rand = new Random();
+                int temp = rand.Next(0, 10000);
+                if (temp > 5000)
+                { explosionSound1.Play(); }
+                else { explosionSound2.Play(); }
+
+                Animation ani = new Animation();
+                ani.Initialize(explosionTexture, new Vector2(grenade.Position.X - 17.25f, grenade.Position.Y - 80.0f), 0, 69, 160, 30, 10, Color.White, 1, false);
+                Spark spark = new Spark(ani, new Vector2(0, -5));
+                sparks.Add(spark);
+                grenades.Remove(grenade);
+            }
+
+        }
+
+        public static void loadContent(ContentManager Content, GraphicsDevice graphics)
+        {
+            //load all the textures
+            shyGuy = Content.Load<Texture2D>("Sprites/ShGuy");
+            angryLakitu = Content.Load<Texture2D>("Sprites/angryLakitu");
+            gunTexture = Content.Load<Texture2D>("Sprites/Pistol");
+            pistolBulletTexture = Content.Load<Texture2D>("Sprites/BulletBill");
+            assaultRifle = Content.Load<Texture2D>("Sprites/AssaultRifle");
+            assaultRifleBullet = Content.Load<Texture2D>("Sprites/AssaultRifleBullet");
+            goombaTexture = Content.Load<Texture2D>("Sprites/GoombaSpriteSheet");
+            flamethrower = Content.Load<Texture2D>("Sprites/FlameThrower");
+            bloodSplatter = Content.Load<Texture2D>("Sprites/Blood Splatter");
+            deathBlood = Content.Load<Texture2D>("Sprites/DeathBlood");
+            sniperRifle = Content.Load<Texture2D>("Sprites/sniper");
+            sniperBullet = Content.Load<Texture2D>("Sprites/sniperBlast");
+            hammerBro = Content.Load<Texture2D>("Sprites/HammerBro Throw");
+            bomb = Content.Load<Texture2D>("Sprites/bomb");
+            sparkTexture = Content.Load<Texture2D>("Sprites/sparks1");
+            explosionTexture = Content.Load<Texture2D>("Sprites/explosion1");
+            smokeTexture = Content.Load<Texture2D>("Sprites/smokeParticle");
+            egg = Content.Load<Texture2D>("Sprites/egg");
+            yoshi = Content.Load<Texture2D>("Sprites/yoshi");
+            tower = Content.Load<Texture2D>("Sprites/Slug Boss 1");
+            wand = Content.Load<Texture2D>("Sprites/RedMageWand");
+            star = Content.Load<Texture2D>("Sprites/star");
+            mario = Content.Load<Texture2D>("Sprites/KoopaCarMario");
+            HMG = Content.Load<Texture2D>("Sprites/MG sheet");
+            marioBullet = Content.Load<Texture2D>("Sprites/MarioBullet");
+            blank = Content.Load<Texture2D>("Sprites/Blank Space");
+            bobOmb = Content.Load<Texture2D>("Sprites/Bob Omb");
+
+
+            //load all the sounds
+            pistolSound = Content.Load<SoundEffect>("Sounds/pistolSound");
+            jumpSound = Content.Load<SoundEffect>("Sounds/jump");
+            doubleJumpSound = Content.Load<SoundEffect>("Sounds/doubleJump");
+            assaultRifleSound = Content.Load<SoundEffect>("Sounds/AssaultRifleSound");
+            neverShot = Content.Load<SoundEffect>("Sounds/neverShot");
+            yippyKaiYay = Content.Load<SoundEffect>("Sounds/yippyKaiYay");
+            grenadeThrowSound = Content.Load<SoundEffect>("Sounds/grenadeThrow");
+            grenadeBounceSound = Content.Load<SoundEffect>("Sounds/grenadeBounce");
+            explosionSound1 = Content.Load<SoundEffect>("Sounds/grenadeExplosion1");
+            explosionSound2 = Content.Load<SoundEffect>("Sounds/grenadeExplosion2");
+
+            //load our collision box graphics (only to see our boundaries when we want)
+            box = new Texture2D(graphics, 1, 1);
+            box.SetData<Color>(new Color[] { Color.White });
+        }
+
+        // Initialize the Enemy
+        public void Initialize(Vector2 position, int grav, int enemyType)
+        {
+            currentWeapon = enemyType;
+            //EnemyAnimation = animation;
+
+            // Set the starting position of the Enemy around the middle of the screen and to the back
+            Position = position;
+
+            // Set the Enemy to be active
+            //Active = true;
+
+            // Set the Enemy health
+            health = 100;
+
+            //set gravity (this is almost always 9, but it's here just incase we want a space level, like on the moon or some shit
+            gravity = grav;
+
+            //the Enemy will always spawn in the air, so set the ground switch to off 
+            isOnGround = false;
+
+            //set facing right
+            scaleX = 1;
+            myBox.X = (int)Position.X;
+            myBox.Y = (int)Position.Y;
+
+
+            //set collision box height and width
+            
+
+            EnemyAnimation = new Animation[2];
+            EnemyAnimation[0] = new Animation();
+            EnemyAnimation[1] = new Animation();
+            hitAnimation = new Animation();
+            deathAnimation = new Animation();
+            hitAnimation.Initialize(bloodSplatter, Position, 0, 50, 50, 10, 30, Color.White, scaleX, false);
+            hitAnimation.Active = true;
+            deathAnimation.Initialize(deathBlood, position, 0, 97, 114, 9, 10, Color.White, scaleX, false);
+            deathAnimation.Active = true;
+
+            if (currentWeapon == 0)
+            {
+                myBox.Height = 32;
+                myBox.Width = 16;
+
+                EnemyAnimation[0].Initialize(shyGuy, Position, 0, 23, 28, 1, 17, Color.White, scaleX, true);
+                EnemyAnimation[1].Initialize(shyGuy, Position, 0, 23, 28, 8, 30, Color.White, scaleX, true);
+
+                gunAnimation = new Animation[1];
+                gunAnimation[0] = new Animation();
+
+                gunAnimation[0].Initialize(gunTexture, Position, 0, 45, 20, 5, 1, Color.White, scaleX, false);
+                gunAnimation[0].origin = new Vector2(0, 10);
+                gunAnimation[0].Active = true;
+
+
+                ammo = new int[2];
+                ammo[0] = 50;
+
+                activeAnimation = 0;
+                canShoot = true;
+                canDoubleJump = false;
+            }
+            else if (currentWeapon == 1)
+            {
+                myBox.Height = 32;
+                myBox.Width = 16;
+
+                EnemyAnimation[0].Initialize(goombaTexture, Position, 0, 29, 34, 1, 5, Color.White, scaleX, true);
+                EnemyAnimation[1].Initialize(goombaTexture, Position, 0, 29, 34, 8, 5, Color.White, scaleX, true);
+
+                gunAnimation = new Animation[6];
+
+                for (int x = 0; x < 6; x++)
+                {
+                    gunAnimation[x] = new Animation();
+
+                    gunAnimation[x].Initialize(assaultRifle, Position, 0, 36, 17, 4, 1, Color.White, scaleX, false);
+                    gunAnimation[x].origin = new Vector2(0, 10);
+                    gunAnimation[x].Active = true;
+                }
+
+                
+
+
+                ammo = new int[2];
+                ammo[0] = 50;
+
+                activeAnimation = 0;
+                canShoot = true;
+                canDoubleJump = false;
+            }
+            if (currentWeapon == 2)
+            {
+                myBox.Height = 32;
+                myBox.Width = 16;
+
+                EnemyAnimation[0].Initialize(hammerBro, Position, 0, 44, 48, 1, 17, Color.White, scaleX, true);
+                EnemyAnimation[1].Initialize(hammerBro, Position, 0, 44, 48, 1, 30, Color.White, scaleX, true);
+
+                gunAnimation = new Animation[3];
+                gunAnimation[2] = new Animation();
+
+                gunAnimation[2].Initialize(bomb, Position, 0, 19, 21, 1, 1, Color.White, scaleX, false);
+                gunAnimation[2].origin = new Vector2(0, 10);
+                gunAnimation[2].Active = true;
+
+
+                ammo = new int[2];
+                ammo[0] = 50;
+
+                activeAnimation = 0;
+                canShoot = true;
+                canDoubleJump = false;
+            }
+            if (currentWeapon == 5)
+            {
+                myBox.Height = 64;
+                myBox.Width = 66;
+                health = 3000;
+                EnemyAnimation[0].Initialize(yoshi, Position, 0, 66, 64, 1, 30, Color.White, scaleX, true);
+                EnemyAnimation[1].Initialize(yoshi, Position, 0, 66, 64, 1, 30, Color.White, scaleX, true);
+
+                gunAnimation = new Animation[10];
+                gunAnimation[5] = new Animation();
+
+                gunAnimation[5].Initialize(egg, Position, 0, 17, 22, 1, 1, Color.White, scaleX, false);
+                gunAnimation[5].origin = new Vector2(0, 10);
+                gunAnimation[5].Active = true;
+
+
+                ammo = new int[2];
+                ammo[0] = 50;
+
+                activeAnimation = 0;
+                canShoot = true;
+                canDoubleJump = false;
+            }
+            if (currentWeapon == 6)
+            {
+                myBox.Height = 235;
+                myBox.Width = 149;
+                health = 5000;
+                EnemyAnimation[0].Initialize(tower, new Vector2(Position.X, Position.Y - 250), 0, 149, 275, 1, 30, Color.White, scaleX, true);
+                EnemyAnimation[1].Initialize(tower, new Vector2(Position.X, Position.Y - 250), 0, 149, 275, 1, 30, Color.White, scaleX, true);
+
+                gunAnimation = new Animation[10];
+                gunAnimation[6] = new Animation();
+                
+
+                gunAnimation[6].Initialize(wand, new Vector2(Position.X,(Position.Y - 70)), 0, 34, 34, 3, 17, Color.White, scaleX, false);
+                gunAnimation[6].origin = new Vector2(0, 10);
+                gunAnimation[6].Active = true;
+
+
+                ammo = new int[2];
+                ammo[0] = 50;
+
+                activeAnimation = 0;
+                canShoot = true;
+                canDoubleJump = false;
+            }
+            if (currentWeapon == 7)
+            {
+                health = 9000;
+                myBox.Height = 105;
+                myBox.Width = 73;
+
+                EnemyAnimation[0].Initialize(mario, Position, 0, 73, 105, 1, 17, Color.White, scaleX, true);
+                EnemyAnimation[1].Initialize(mario, Position, 0, 73, 105, 8, 30, Color.White, scaleX, true);
+
+                gunAnimation = new Animation[10];
+                gunAnimation[7] = new Animation();
+
+                gunAnimation[7].Initialize(HMG, Position, 0, 70, 21, 3, 17, Color.White, scaleX, false);
+                gunAnimation[7].origin = new Vector2(0, 10);
+                gunAnimation[7].Active = true;
+
+
+                ammo = new int[2];
+                ammo[0] = 50;
+
+                activeAnimation = 0;
+                canShoot = true;
+                canDoubleJump = false;
+            }
+
+        }
+
+        // Update the Enemy animation
+        public void Update(GameTime gameTime, Vector2 playerPosition)
+        {
+            //how much time has elapsed
+            float elapsed = (float)gameTime.ElapsedGameTime.TotalSeconds;//0.01666667 (or 16.67 ms) @ 60FPS
+            shoot += (float)gameTime.ElapsedGameTime.TotalSeconds;
+            wait += (float)gameTime.ElapsedGameTime.TotalSeconds;
+
+            #region Is Hit
+            if (previousHealth > health)
+            {
+                hitAnimation.Active = true;
+                hitAnimation.currentFrame = 0;
+                seen = true;
+            }
+            #endregion
+
+            #region Is Seen
+            if (seen == false && playerPosition.X < Position.X && Position.X - playerPosition.X < 300 || seen == false && playerPosition.X > Position.X && playerPosition.X - Position.X < 300)
+            {
+                seen = true;
+            }
+            else if (seen == false && previousHealth > health)
+            {
+                seen = true;
+            }
+            if (currentWeapon == 6 || currentWeapon == 7)
+            {
+                if (seen == false && playerPosition.X < Position.X && Position.X - playerPosition.X < 800 || seen == false && playerPosition.X > Position.X && playerPosition.X - Position.X < 800)
+                {
+                    seen = true;
+                }
+                else if (seen == false && previousHealth > health)
+                {
+                    seen = true;
+                }
+            }
+            #endregion
+
+            #region Running
+            if (isOnGround)
+            {
+                prevSpeed = Speed;
+            }
+            if (isOnGround == true)
+            {
+                if (currentWeapon == 0)
+                {
+                    EnemyAnimation[activeAnimation].reverse = false;
+
+
+                    if (playerPosition.X < Position.X && Position.X - playerPosition.X > 300 && seen == true)
+                    {
+                        Speed.X = -2;
+                        activeAnimation = 1;
+                        scaleX = 1;
+
+
+                    }
+                    else if (playerPosition.X > Position.X && playerPosition.X - Position.X > 300 && seen == true)
+                    {
+                        Speed.X = 2;
+                        activeAnimation = 1;
+                        scaleX = -1;
+
+
+                    }
+                    else
+                    {
+                        activeAnimation = 0;
+                        Speed.X = 0;
+                    }
+                }
+                else if (currentWeapon == 1)
+                {
+                    EnemyAnimation[activeAnimation].reverse = false;
+
+
+                    if (playerPosition.X < Position.X && Position.X - playerPosition.X > 500 && seen == true)
+                    {
+                        Speed.X = -1;
+                        activeAnimation = 1;
+                        scaleX = -1;
+
+
+                    }
+                    else if (playerPosition.X > Position.X && playerPosition.X - Position.X > 500 && seen == true)
+                    {
+                        Speed.X = 1;
+                        activeAnimation = 1;
+                        scaleX = 1;
+
+
+                    }
+                    else
+                    {
+                        activeAnimation = 0;
+                        Speed.X = 0;
+                    }
+
+                }
+                if (currentWeapon == 2)
+                {
+                    EnemyAnimation[activeAnimation].reverse = false;
+
+
+                    if (playerPosition.X < Position.X && Position.X - playerPosition.X > 300 && seen == true)
+                    {
+                        Speed.X = 0;
+                        activeAnimation = 1;
+                        scaleX = 1;
+
+
+                    }
+                    else if (playerPosition.X > Position.X && playerPosition.X - Position.X > 300 && seen == true)
+                    {
+                        Speed.X = 0;
+                        activeAnimation = 1;
+                        scaleX = -1;
+
+
+                    }
+                    else
+                    {
+                        activeAnimation = 0;
+                        Speed.X = 0;
+                    }
+                }
+            }
+            else
+            {
+                Speed.X = prevSpeed.X;
+            }
+
+            if (wasOnGround == true && isOnGround == false)
+            {
+                Speed.Y = -5;
+            }
+            wasOnGround = isOnGround;
+
+            #endregion
+
+
+            #region Pistol Gun Control
+            if (currentWeapon == 0)
+            {
+
+
+
+                if (shoot > 2f && seen == true && (playerPosition.X - Position.X) < 1000 )
+                {
+                    gunAnimation[currentWeapon].Active = true;
+                    gunAnimation[currentWeapon].currentFrame = 0;
+                   
+                    shoot = 0f;
+                    pistolSound.Play();
+                   /* int randomNum = random.Next(0, 10);
+                    if (randomNum == 5)
+                    {
+                        SoundEffectInstance assaultYell;
+                        assaultYell = neverShot.CreateInstance();
+                        assaultYell.Volume = 1f;
+                       assaultYell.Pitch = -0.3f;
+                        assaultYell.Play();
+
+                    }*/
+
+
+                    if (scaleX > 0)
+                    {
+                        Vector2 bulletPosition = new Vector2(Position.X + 30 * (float)Math.Cos(gunAnimation[currentWeapon].rotation), Position.Y + 20 * (float)Math.Sin(gunAnimation[currentWeapon].rotation) + 7);
+
+                        double X = playerPosition.X - bulletPosition.X;
+                        double Y = playerPosition.Y - bulletPosition.Y;
+                        double bulletRotation = Math.Atan2(Y, X);
+
+                        Bullet bullet = new Bullet(pistolBulletTexture, new Rectangle(0, 0, 8, 8), 0, bulletPosition, (float)bulletRotation, 1, new Player());
+                        bullets.Add(bullet);
+                    }
+                    else
+                    {
+                        Vector2 bulletPosition = new Vector2(Position.X + 30 * (float)Math.Cos(gunAnimation[currentWeapon].rotation) + 17, Position.Y + 20 * (float)Math.Sin(gunAnimation[currentWeapon].rotation) + 7);
+
+                        double X = playerPosition.X - bulletPosition.X;
+                        double Y = playerPosition.Y - bulletPosition.Y;
+                        double bulletRotation = Math.Atan2(Y, X);
+
+                        Bullet bullet = new Bullet(pistolBulletTexture, new Rectangle(0, 0, 8, 8), 0, bulletPosition, (float)bulletRotation, 1, new Player());
+                        bullets.Add(bullet);
+                    }
+                }
+                else if (gunAnimation[currentWeapon].Active == true && gunAnimation[currentWeapon].currentFrame == 0)
+                {
+                    gunAnimation[currentWeapon].Active = false;
+                }
+
+            }
+            #endregion
+
+            #region Assault Rifle Shoot Control
+
+            if (currentWeapon == 1)
+            {
+
+                if (shoot > 3f && seen == true && (playerPosition.X - Position.X) < 1000 || canShoot && seen == true && (playerPosition.X - Position.X) < 1000)
+                {
+                    gunAnimation[currentWeapon].Active = true;
+                    gunAnimation[currentWeapon].currentFrame = 0;
+                    shotCount += 1;
+                    canShoot = true;
+                    if (shotCount > 5)
+                    {
+                        canShoot = false;
+                        shotCount = 0;
+                        /*int randomNum = random.Next(0, 10);
+                        if (randomNum == 5)
+                        {
+                            SoundEffectInstance yippyKaiYayInstance;
+                            yippyKaiYayInstance = yippyKaiYay.CreateInstance();
+                            yippyKaiYayInstance.Volume = 1f;
+                            yippyKaiYayInstance.Pitch = 0.5f;
+                            yippyKaiYayInstance.Play();
+                        }*/
+                    }
+
+                    shoot = 0f;
+                    SoundEffectInstance assaultRifleInstance;
+                    assaultRifleInstance = assaultRifleSound.CreateInstance();
+                    assaultRifleInstance.Volume = 0.1f;
+                    assaultRifleInstance.Play();
+
+
+
+                    if (scaleX > 0)
+                    {
+                        Vector2 bulletPosition = new Vector2(Position.X + 30 * (float)Math.Cos(gunAnimation[currentWeapon].rotation), Position.Y + 20 * (float)Math.Sin(gunAnimation[currentWeapon].rotation) + 7);
+
+                        double X = playerPosition.X - bulletPosition.X;
+                        double Y = playerPosition.Y - bulletPosition.Y;
+                        double bulletRotation = Math.Atan2(Y, X);
+
+                        Bullet bullet = new Bullet(assaultRifleBullet, new Rectangle(0, 0, 8, 8), 0, bulletPosition, (float)bulletRotation, 1, new Player());
+                        bullets.Add(bullet);
+                    }
+                    else
+                    {
+                        Vector2 bulletPosition = new Vector2(Position.X + 30 * (float)Math.Cos(gunAnimation[currentWeapon].rotation) + 17, Position.Y + 20 * (float)Math.Sin(gunAnimation[currentWeapon].rotation) + 7);
+
+                        double X = playerPosition.X - bulletPosition.X;
+                        double Y = playerPosition.Y - bulletPosition.Y;
+                        double bulletRotation = Math.Atan2(Y, X);
+
+                        Bullet bullet = new Bullet(assaultRifleBullet, new Rectangle(0, 0, 8, 8), 0, bulletPosition, (float)bulletRotation, 1, new Player());
+                        bullets.Add(bullet);
+                    }
+                }
+                else if (gunAnimation[currentWeapon].Active == true && gunAnimation[currentWeapon].currentFrame == 0)
+                {
+                    gunAnimation[currentWeapon].Active = false;
+                }
+
+            }
+
+            #endregion
+
+            #region Bomber
+
+            if (currentWeapon == 2)
+            {
+                /*if (shoot > 2f && seen == true)
+                {
+                    
+                    EnemyAnimation[1].Active = true;
+                    EnemyAnimation[1].currentFrame = 0;
+
+                    gunAnimation[currentWeapon].Active = true;
+                    gunAnimation[currentWeapon].currentFrame = 0;
+
+                    SoundEffectInstance sound = grenadeThrowSound.CreateInstance();
+                    sound.Volume = .5f;
+                    sound.Play();
+                    
+                    double X = playerPosition.X - Position.X;
+                    double Y = playerPosition.Y - Position.Y;
+                    double bulletRotation = Math.Atan2(Y, X);
+                    Grenade gren = new Grenade(bomb, new Rectangle(0, 0, 10, 10), 0, Position, 0, new Vector2(9.5f, 10.5f), (float)bulletRotation);
+                    grenades.Add(gren);                                        
+                }*/
+
+                if (shoot > 2f && seen == true && (playerPosition.X - Position.X) < 1000)
+                {
+                    gunAnimation[currentWeapon].Active = true;
+                    gunAnimation[currentWeapon].currentFrame = 0;
+
+                    shoot = 0f;
+                    pistolSound.Play();
+                    
+
+                    if (scaleX > 0)
+                    {
+                        Vector2 bulletPosition = new Vector2(Position.X + 30 * (float)Math.Cos(gunAnimation[currentWeapon].rotation), Position.Y + 20 * (float)Math.Sin(gunAnimation[currentWeapon].rotation) + 7);
+
+                        double X = playerPosition.X - bulletPosition.X;
+                        double Y = playerPosition.Y - bulletPosition.Y;
+                        double bulletRotation = Math.Atan2(Y, X);
+
+                        Grenade gren = new Grenade(bobOmb, new Rectangle(0, 0, 30, 30), 6, Position, 0, new Vector2(9.5f, 10.5f), (float)bulletRotation);
+                        grenades.Add(gren);
+                    }
+                    else
+                    {
+                        Vector2 bulletPosition = new Vector2(Position.X + 30 * (float)Math.Cos(gunAnimation[currentWeapon].rotation) + 17, Position.Y + 20 * (float)Math.Sin(gunAnimation[currentWeapon].rotation) + 7);
+
+                        double X = playerPosition.X - bulletPosition.X;
+                        double Y = playerPosition.Y - bulletPosition.Y;
+                        double bulletRotation = Math.Atan2(Y, X);
+
+                        Grenade gren = new Grenade(bobOmb, new Rectangle(0, 0, 30, 30), 6, Position, 0, new Vector2(9.5f, 10.5f), (float)bulletRotation);
+                        grenades.Add(gren);
+                    }
+                }
+                else if (EnemyAnimation[1].Active == true && EnemyAnimation[1].currentFrame == 0)
+                {
+                    EnemyAnimation[1].Active = false;
+                }
+
+            }
+
+            #endregion
+
+            #region Yoshi Boss
+            if (currentWeapon == 5 && health > 1500)
+            {
+                bossFireTime = 20f;
+                if (Position.Y > 330)
+                {
+                    up = true;
+                    down = false;
+                }
+                if (Position.Y < 100)
+                {
+                    down = true;
+                    up = false;
+                }
+                if (Position.X > 9360 || Position.X == 9360)
+                {
+                    left = true;
+                    right = false;
+                }
+                if (Position.X < 8412 || Position.X == 8412)
+                {
+                    right = true;
+                    left = false;
+                }
+                if (left == true)
+                {
+                    Speed.X = -3;
+                }
+                else if (right == true)
+                {
+                    Speed.X = 3;
+                }
+                if (up == true)
+                {
+                    Speed.Y = -3;
+                }
+                if (down == true)
+                {
+                    Speed.Y = 3;
+                }
+                
+                if (shoot > 1f && special == false)
+                {
+                    gunAnimation[currentWeapon].Active = true;
+                    gunAnimation[currentWeapon].currentFrame = 0;
+                    shoot = 0;
+                    Vector2 bulletPosition = new Vector2(Position.X + 30 * (float)Math.Cos(gunAnimation[currentWeapon].rotation), Position.Y + 20 * (float)Math.Sin(gunAnimation[currentWeapon].rotation) + 7);
+
+                    double X = playerPosition.X - bulletPosition.X;
+                    double Y = playerPosition.Y - bulletPosition.Y;
+                    double bulletRotation = Math.Atan2(Y, X);
+
+                    Bullet bullet = new Bullet(egg, new Rectangle(0, 0, 17, 22), 6, bulletPosition, (float)bulletRotation * 10, 1, new Player());
+                    bullets.Add(bullet);
+                    bullet = new Bullet(egg, new Rectangle(0, 0, 17, 22), 6, bulletPosition, (float)bulletRotation * 20, 1, new Player());
+                    bullets.Add(bullet);
+                    bullet = new Bullet(egg, new Rectangle(0, 0, 17, 22), 6, bulletPosition, (float)bulletRotation * 30, 1, new Player());
+                    bullets.Add(bullet);
+                    bullet = new Bullet(egg, new Rectangle(0, 0, 17, 22), 6, bulletPosition, (float)bulletRotation * 40, 1, new Player());
+                    bullets.Add(bullet);
+                    bullet = new Bullet(egg, new Rectangle(0, 0, 17, 22), 6, bulletPosition, (float)bulletRotation * 50, 1, new Player());
+                    bullets.Add(bullet);
+                    bullet = new Bullet(egg, new Rectangle(0, 0, 17, 22), 6, bulletPosition, (float)bulletRotation * 60, 1, new Player());
+                    bullets.Add(bullet);
+                    bullet = new Bullet(egg, new Rectangle(0, 0, 17, 22), 6, bulletPosition, (float)bulletRotation * 70, 1, new Player());
+                    bullets.Add(bullet);
+                    bullet = new Bullet(egg, new Rectangle(0, 0, 17, 22), 6, bulletPosition, (float)bulletRotation * 90, 1, new Player());
+                    bullets.Add(bullet);
+                    bullet = new Bullet(egg, new Rectangle(0, 0, 17, 22), 6, bulletPosition, (float)bulletRotation * 100, 1, new Player());
+                    bullets.Add(bullet);
+                    bullet = new Bullet(egg, new Rectangle(0, 0, 17, 22), 6, bulletPosition, (float)bulletRotation * 110, 1, new Player());
+                    bullets.Add(bullet);
+                    bullet = new Bullet(egg, new Rectangle(0, 0, 17, 22), 6, bulletPosition, (float)bulletRotation * 120, 1, new Player());
+                    bullets.Add(bullet);
+                } 
+                else if (gunAnimation[currentWeapon].Active == true && gunAnimation[currentWeapon].currentFrame == 0)
+                {
+                    gunAnimation[currentWeapon].Active = false;
+                }
+                
+            }
+            else if (currentWeapon == 5 && health < 500)
+            {
+                bossFireTime = 20f;
+                if (Position.Y > 430)
+                {
+                    up = true;
+                    down = false;
+                }
+                if (Position.Y < 100)
+                {
+                    down = true;
+                    up = false;
+                }
+                if (Position.X > 9360 || Position.X == 9360)
+                {
+                    left = true;
+                    right = false;
+                }
+                if (Position.X < 8412 || Position.X == 8412)
+                {
+                    right = true;
+                    left = false;
+                }
+                if (left == true)
+                {
+                    Speed.X = -4;
+                }
+                else if (right == true)
+                {
+                    Speed.X = 4;
+                }
+                if (up == true)
+                {
+                    Speed.Y = -4;
+                }
+                if (down == true)
+                {
+                    Speed.Y = 4;
+                }
+
+                if (shoot > 0.5f && special == false)
+                {
+                    gunAnimation[currentWeapon].Active = true;
+                    gunAnimation[currentWeapon].currentFrame = 0;
+                    shoot = 0;
+                    Vector2 bulletPosition = new Vector2(Position.X + 30 * (float)Math.Cos(gunAnimation[currentWeapon].rotation), Position.Y + 20 * (float)Math.Sin(gunAnimation[currentWeapon].rotation) + 7);
+
+                    double X = playerPosition.X - bulletPosition.X;
+                    double Y = playerPosition.Y - bulletPosition.Y;
+                    double bulletRotation = Math.Atan2(Y, X);
+
+                    Bullet bullet = new Bullet(egg, new Rectangle(0, 0, 17, 22), 6, bulletPosition, (float)bulletRotation * 10, 1, new Player());
+                    bullets.Add(bullet);
+                    bullet = new Bullet(egg, new Rectangle(0, 0, 17, 22), 6, bulletPosition, (float)bulletRotation * 20, 1, new Player());
+                    bullets.Add(bullet);
+                    bullet = new Bullet(egg, new Rectangle(0, 0, 17, 22), 6, bulletPosition, (float)bulletRotation * 30, 1, new Player());
+                    bullets.Add(bullet);
+                    bullet = new Bullet(egg, new Rectangle(0, 0, 17, 22), 6, bulletPosition, (float)bulletRotation * 40, 1, new Player());
+                    bullets.Add(bullet);
+                    bullet = new Bullet(egg, new Rectangle(0, 0, 17, 22), 6, bulletPosition, (float)bulletRotation * 50, 1, new Player());
+                    bullets.Add(bullet);
+                    bullet = new Bullet(egg, new Rectangle(0, 0, 17, 22), 6, bulletPosition, (float)bulletRotation * 60, 1, new Player());
+                    bullets.Add(bullet);
+                    bullet = new Bullet(egg, new Rectangle(0, 0, 17, 22), 6, bulletPosition, (float)bulletRotation * 70, 1, new Player());
+                    bullets.Add(bullet);
+                    bullet = new Bullet(egg, new Rectangle(0, 0, 17, 22), 6, bulletPosition, (float)bulletRotation * 90, 1, new Player());
+                    bullets.Add(bullet);
+                    bullet = new Bullet(egg, new Rectangle(0, 0, 17, 22), 6, bulletPosition, (float)bulletRotation * 100, 1, new Player());
+                    bullets.Add(bullet);
+                    bullet = new Bullet(egg, new Rectangle(0, 0, 17, 22), 6, bulletPosition, (float)bulletRotation * 110, 1, new Player());
+                    bullets.Add(bullet);
+                    bullet = new Bullet(egg, new Rectangle(0, 0, 17, 22), 6, bulletPosition, (float)bulletRotation * 120, 1, new Player());
+                    bullets.Add(bullet);
+                }
+                else if (gunAnimation[currentWeapon].Active == true && gunAnimation[currentWeapon].currentFrame == 0)
+                {
+                    gunAnimation[currentWeapon].Active = false;
+                }
+
+            }
+
+            #endregion
+
+            #region Tower Boss
+            if (currentWeapon == 6)
+            {
+                   
+                if (shoot > 2f && seen == true || canShoot && seen == true && health > 2000)
+                {
+                    if (wait > 0.05f)
+                    {
+                        wait = 0;
+                        gunAnimation[currentWeapon].Active = true;
+                        gunAnimation[currentWeapon].currentFrame = 0;
+                        shotCount += 1;
+                        canShoot = true;
+                        if (shotCount > 12)
+                        {
+                            canShoot = false;
+                            shotCount = 0;
+                            /*int randomNum = random.Next(0, 10);
+                            if (randomNum == 5)
+                            {
+                                SoundEffectInstance yippyKaiYayInstance;
+                                yippyKaiYayInstance = yippyKaiYay.CreateInstance();
+                                yippyKaiYayInstance.Volume = 1f;
+                                yippyKaiYayInstance.Pitch = 0.5f;
+                                yippyKaiYayInstance.Play();
+                            }*/
+                        }
+
+                        shoot = 0f;
+                        SoundEffectInstance pistolInstance;
+                        pistolInstance = pistolSound.CreateInstance();
+                        pistolInstance.Pitch = 1.0f;
+                        pistolInstance.Play();
+
+
+
+                        if (scaleX > 0)
+                        {
+                            Vector2 bulletPosition = new Vector2(Position.X + 30 * (float)Math.Cos(gunAnimation[currentWeapon].rotation), Position.Y + 180 * (float)Math.Sin(gunAnimation[currentWeapon].rotation) + 7);
+
+                            double X = playerPosition.X - bulletPosition.X;
+                            double Y = playerPosition.Y - bulletPosition.Y;
+                            double bulletRotation = Math.Atan2(Y, X);
+
+                            Bullet bullet = new Bullet(star, new Rectangle(0, 0, 24, 24), 6, bulletPosition, (float)bulletRotation, 1, new Player());
+                            bullets.Add(bullet);
+                        }
+                        else
+                        {
+                            Vector2 bulletPosition = new Vector2(Position.X + 30 * (float)Math.Cos(gunAnimation[currentWeapon].rotation) + 17, Position.Y + 180 * (float)Math.Sin(gunAnimation[currentWeapon].rotation) + 7);
+
+                            double X = playerPosition.X - bulletPosition.X;
+                            double Y = playerPosition.Y - bulletPosition.Y;
+                            double bulletRotation = Math.Atan2(Y, X);
+
+                            Bullet bullet = new Bullet(star, new Rectangle(0, 0, 24, 24), 6, bulletPosition, (float)bulletRotation, 1, new Player());
+                            bullets.Add(bullet);
+                        }
+                    }
+                }
+                else if (shoot > 1f && seen == true || canShoot && seen == true && health < 1000)
+                {
+                    if (wait > 0.05f)
+                    {
+                        wait = 0;
+                        gunAnimation[currentWeapon].Active = true;
+                        gunAnimation[currentWeapon].currentFrame = 0;
+                        shotCount += 1;
+                        canShoot = true;
+                        if (shotCount > 15)
+                        {
+                            canShoot = false;
+                            shotCount = 0;
+                            /*int randomNum = random.Next(0, 10);
+                            if (randomNum == 5)
+                            {
+                                SoundEffectInstance yippyKaiYayInstance;
+                                yippyKaiYayInstance = yippyKaiYay.CreateInstance();
+                                yippyKaiYayInstance.Volume = 1f;
+                                yippyKaiYayInstance.Pitch = 0.5f;
+                                yippyKaiYayInstance.Play();
+                            }*/
+                        }
+
+                        shoot = 0f;
+
+
+
+                        if (scaleX > 0)
+                        {
+                            Vector2 bulletPosition = new Vector2(Position.X + 30 * (float)Math.Cos(gunAnimation[currentWeapon].rotation), Position.Y + 180 * (float)Math.Sin(gunAnimation[currentWeapon].rotation) + 7);
+
+                            double X = playerPosition.X - bulletPosition.X;
+                            double Y = playerPosition.Y - bulletPosition.Y;
+                            double bulletRotation = Math.Atan2(Y, X);
+
+                            Bullet bullet = new Bullet(star, new Rectangle(0, 0, 24, 24), 6, bulletPosition, (float)bulletRotation, 1, new Player());
+                            bullets.Add(bullet);
+                        }
+                        else
+                        {
+                            Vector2 bulletPosition = new Vector2(Position.X + 30 * (float)Math.Cos(gunAnimation[currentWeapon].rotation) + 17, Position.Y + 180 * (float)Math.Sin(gunAnimation[currentWeapon].rotation) + 7);
+
+                            double X = playerPosition.X - bulletPosition.X;
+                            double Y = playerPosition.Y - bulletPosition.Y;
+                            double bulletRotation = Math.Atan2(Y, X);
+
+                            Bullet bullet = new Bullet(star, new Rectangle(0, 0, 24, 24), 6, bulletPosition, (float)bulletRotation, 1, new Player());
+                            bullets.Add(bullet);
+                        }
+                    }
+                }
+                    else if (gunAnimation[currentWeapon].Active == true && gunAnimation[currentWeapon].currentFrame == 0)
+                    {
+                        gunAnimation[currentWeapon].Active = false;
+                    }
+                
+
+                
+            }
+
+            #endregion
+
+            #region Mario Boss
+            if (currentWeapon == 7)
+            {
+                if (shoot > 4f && seen == true || canShoot && seen == true && health > 6000)
+                {
+                    if (wait > 0.5f)
+                    {
+                        wait = 0;
+                        gunAnimation[currentWeapon].Active = true;
+                        gunAnimation[currentWeapon].currentFrame = 0;
+                        shotCount += 1;
+                        canShoot = true;
+                        if (shotCount > 15)
+                        {
+                            canShoot = false;
+                            shotCount = 0;
+
+                            Vector2 bulletPosition = new Vector2(Position.X + 30 * (float)Math.Cos(gunAnimation[currentWeapon].rotation), Position.Y + 20 * (float)Math.Sin(gunAnimation[currentWeapon].rotation) + 7);
+
+                            double X = playerPosition.X - bulletPosition.X;
+                            double Y = playerPosition.Y - bulletPosition.Y;
+                            double bulletRotation = Math.Atan2(Y, X);
+
+                            Grenade gren = new Grenade(bobOmb, new Rectangle(0, 0, 30, 30), 6, Position, 0, new Vector2(9.5f, 10.5f), (float)bulletRotation);
+                            grenades.Add(gren);
+                            
+                        }
+
+                        shoot = 0f;
+                        SoundEffectInstance assaultRifleInstance;
+                        assaultRifleInstance = assaultRifleSound.CreateInstance();
+                        assaultRifleInstance.Volume = 0.1f;
+                        assaultRifleInstance.Pitch = -1f;
+                        assaultRifleInstance.Play();
+
+
+
+                        if (scaleX > 0)
+                        {
+                            Vector2 bulletPosition = new Vector2(Position.X + 30 * (float)Math.Cos(gunAnimation[currentWeapon].rotation), Position.Y + 20 * (float)Math.Sin(gunAnimation[currentWeapon].rotation) + 7);
+
+                            double X = playerPosition.X - bulletPosition.X;
+                            double Y = playerPosition.Y - bulletPosition.Y;
+                            double bulletRotation = Math.Atan2(Y, X);
+
+                            Bullet bullet = new Bullet(marioBullet, new Rectangle(0, 0, 8, 8), 8, bulletPosition, (float)bulletRotation, 1, new Player());
+                            bullets.Add(bullet);
+                        }
+                        else
+                        {
+                            Vector2 bulletPosition = new Vector2(Position.X + 30 * (float)Math.Cos(gunAnimation[currentWeapon].rotation) + 17, Position.Y + 20 * (float)Math.Sin(gunAnimation[currentWeapon].rotation) + 7);
+
+                            double X = playerPosition.X - bulletPosition.X;
+                            double Y = playerPosition.Y - bulletPosition.Y;
+                            double bulletRotation = Math.Atan2(Y, X);
+
+                            Bullet bullet = new Bullet(marioBullet, new Rectangle(0, 0, 8, 8), 8, bulletPosition, (float)bulletRotation, 1, new Player());
+                            bullets.Add(bullet);
+                        }
+                    }
+                }
+                else if (shoot > 2f && seen == true || canShoot && seen == true && health > 2000)
+                {
+                    if (wait > 0.05f)
+                    {
+                        wait = 0;
+                        gunAnimation[currentWeapon].Active = true;
+                        gunAnimation[currentWeapon].currentFrame = 0;
+                        shotCount += 1;
+                        canShoot = true;
+                        if (shotCount > 15)
+                        {
+                            canShoot = false;
+                            shotCount = 0;
+
+                            Vector2 bulletPosition = new Vector2(Position.X + 30 * (float)Math.Cos(gunAnimation[currentWeapon].rotation), Position.Y + 20 * (float)Math.Sin(gunAnimation[currentWeapon].rotation) + 7);
+
+                            double X = playerPosition.X - bulletPosition.X;
+                            double Y = playerPosition.Y - bulletPosition.Y;
+                            double bulletRotation = Math.Atan2(Y, X);
+
+                            Grenade gren = new Grenade(bobOmb, new Rectangle(0, 0, 30, 30), 6, Position, 0, new Vector2(9.5f, 10.5f), (float)bulletRotation);
+                            grenades.Add(gren);
+                            gren = new Grenade(bobOmb, new Rectangle(0, 0, 30, 30), 6, new Vector2(Position.X - 100, Position.Y), 0, new Vector2(9.5f, 10.5f), (float)bulletRotation);
+                            grenades.Add(gren);
+                        }
+
+                        shoot = 0f;
+                        SoundEffectInstance assaultRifleInstance;
+                        assaultRifleInstance = assaultRifleSound.CreateInstance();
+                        assaultRifleInstance.Volume = 0.1f;
+                        assaultRifleInstance.Pitch = -1f;
+                        assaultRifleInstance.Play();
+
+
+
+                        if (scaleX > 0)
+                        {
+                            Vector2 bulletPosition = new Vector2(Position.X + 30 * (float)Math.Cos(gunAnimation[currentWeapon].rotation), Position.Y + 20 * (float)Math.Sin(gunAnimation[currentWeapon].rotation) + 7);
+
+                            double X = playerPosition.X - bulletPosition.X;
+                            double Y = playerPosition.Y - bulletPosition.Y;
+                            double bulletRotation = Math.Atan2(Y, X);
+
+                            Bullet bullet = new Bullet(marioBullet, new Rectangle(0, 0, 8, 8), 8, bulletPosition, (float)bulletRotation, 1, new Player());
+                            bullets.Add(bullet);
+                        }
+                        else
+                        {
+                            Vector2 bulletPosition = new Vector2(Position.X + 30 * (float)Math.Cos(gunAnimation[currentWeapon].rotation) + 17, Position.Y + 20 * (float)Math.Sin(gunAnimation[currentWeapon].rotation) + 7);
+
+                            double X = playerPosition.X - bulletPosition.X;
+                            double Y = playerPosition.Y - bulletPosition.Y;
+                            double bulletRotation = Math.Atan2(Y, X);
+
+                            Bullet bullet = new Bullet(marioBullet, new Rectangle(0, 0, 8, 8), 8, bulletPosition, (float)bulletRotation, 1, new Player());
+                            bullets.Add(bullet);
+                        }
+                    }
+                }
+                else if (shoot > 1f && seen == true || canShoot && seen == true && health < 2000)
+                {
+                    if (wait > 0.03f)
+                    {
+                        wait = 0;
+                        gunAnimation[currentWeapon].Active = true;
+                        gunAnimation[currentWeapon].currentFrame = 0;
+                        shotCount += 1;
+                        canShoot = true;
+                        if (shotCount > 20)
+                        {
+                            canShoot = false;
+                            shotCount = 0;
+
+                            Vector2 bulletPosition = new Vector2(Position.X + 30 * (float)Math.Cos(gunAnimation[currentWeapon].rotation), Position.Y + 20 * (float)Math.Sin(gunAnimation[currentWeapon].rotation) + 7);
+
+                            double X = playerPosition.X - bulletPosition.X;
+                            double Y = playerPosition.Y - bulletPosition.Y;
+                            double bulletRotation = Math.Atan2(Y, X);
+
+                            Grenade gren = new Grenade(bobOmb, new Rectangle(0, 0, 30, 30), 6, Position, 0, new Vector2(9.5f, 10.5f), (float)bulletRotation);
+                            grenades.Add(gren);
+                            gren = new Grenade(bobOmb, new Rectangle(0, 0, 30, 30), 6, new Vector2(Position.X - 100,Position.Y), 0, new Vector2(9.5f, 10.5f), (float)bulletRotation);
+                            grenades.Add(gren);
+                            gren = new Grenade(bobOmb, new Rectangle(0, 0, 30, 30), 6, new Vector2(Position.X + 100, Position.Y), 0, new Vector2(9.5f, 10.5f), (float)bulletRotation);
+                            grenades.Add(gren);
+                        }
+
+                        shoot = 0f;
+                        SoundEffectInstance assaultRifleInstance;
+                        assaultRifleInstance = assaultRifleSound.CreateInstance();
+                        assaultRifleInstance.Volume = 0.1f;
+                        assaultRifleInstance.Pitch = -1f;
+                        assaultRifleInstance.Play();
+
+
+
+                        if (scaleX > 0)
+                        {
+                            Vector2 bulletPosition = new Vector2(Position.X + 30 * (float)Math.Cos(gunAnimation[currentWeapon].rotation), Position.Y + 20 * (float)Math.Sin(gunAnimation[currentWeapon].rotation) + 7);
+
+                            double X = playerPosition.X - bulletPosition.X;
+                            double Y = playerPosition.Y - bulletPosition.Y;
+                            double bulletRotation = Math.Atan2(Y, X);
+
+                            Bullet bullet = new Bullet(marioBullet, new Rectangle(0, 0, 8, 8), 8, bulletPosition, (float)bulletRotation, 1, new Player());
+                            bullets.Add(bullet);
+                        }
+                        else
+                        {
+                            Vector2 bulletPosition = new Vector2(Position.X + 30 * (float)Math.Cos(gunAnimation[currentWeapon].rotation) + 17, Position.Y + 20 * (float)Math.Sin(gunAnimation[currentWeapon].rotation) + 7);
+
+                            double X = playerPosition.X - bulletPosition.X;
+                            double Y = playerPosition.Y - bulletPosition.Y;
+                            double bulletRotation = Math.Atan2(Y, X);
+
+                            Bullet bullet = new Bullet(marioBullet, new Rectangle(0, 0, 8, 8), 8, bulletPosition, (float)bulletRotation, 1, new Player());
+                            bullets.Add(bullet);
+                        }
+                    }
+                }
+            }
+
+            #endregion
+
+
+            //update speed and gravity
+            Position += Speed;
+            Speed.Y += gravity * elapsed;
+            if (currentWeapon == 6)
+            {
+                myBox.X = (int)Position.X - 40;
+                myBox.Y = (int)Position.Y - 180;
+            }
+            else if (currentWeapon == 7)
+            {
+                myBox.X = (int)Position.X - 30;
+                myBox.Y = (int)Position.Y - 50;
+            }
+            else
+            {
+                myBox.X = (int)Position.X;
+                myBox.Y = (int)Position.Y;
+            }
+            if (Position.Y > 700)
+                health = 0;
+            
+            if (currentWeapon == 1)
+            {
+                //update scale
+                if (playerPosition.X > Position.X)
+                {
+                    gunAnimation[currentWeapon].scaleX = 1;
+                    gunAnimation[currentWeapon].scaleY = 1;
+                    scaleX = -1;
+                }
+                else
+                {
+                    gunAnimation[currentWeapon].scaleY = -1;
+                    scaleX = 1;
+                }
+            }
+            else if (currentWeapon == 0 || currentWeapon == 2 || currentWeapon == 5 || currentWeapon == 6 || currentWeapon == 7)
+            {
+                //update scale
+                if (playerPosition.X > Position.X)
+                {
+                    gunAnimation[currentWeapon].scaleX = 1;
+                    gunAnimation[currentWeapon].scaleY = 1;
+                    scaleX = 1;
+                }
+                else
+                {
+                    gunAnimation[currentWeapon].scaleY = -1;
+                    scaleX = -1;
+                }
+            }
+
+            //EnemyAnimation
+            #region EnemyAnimation
+
+            if (currentWeapon == 6)
+            {
+                EnemyAnimation[activeAnimation].frameTime = 30;
+                EnemyAnimation[activeAnimation].Position.X = Position.X + 8 + 3 * scaleX;
+                EnemyAnimation[activeAnimation].Position.Y = Position.Y - 75;
+                EnemyAnimation[activeAnimation].scaleX = scaleX;
+                EnemyAnimation[activeAnimation].Update(gameTime);
+            }
+            else
+            {
+
+                EnemyAnimation[activeAnimation].frameTime = 30;
+                EnemyAnimation[activeAnimation].Position.X = Position.X + 8 + 3 * scaleX;
+                EnemyAnimation[activeAnimation].Position.Y = Position.Y + 12;
+                EnemyAnimation[activeAnimation].scaleX = scaleX;
+                EnemyAnimation[activeAnimation].Update(gameTime);
+            }
+
+            #endregion
+
+            //gunAnimation
+
+
+            if (currentWeapon == 6)
+            {
+                if (gunAnimation[currentWeapon].scaleY < 0)
+                {
+                    gunAnimation[currentWeapon].Position.X = Position.X + 15;
+                }
+                else
+                {
+                    gunAnimation[currentWeapon].Position.X = Position.X + 5;
+                }
+
+                if (currentWeapon == 6)
+                {
+                    gunAnimation[currentWeapon].Position.Y = Position.Y - 100;
+                }
+                else
+                {
+                    gunAnimation[currentWeapon].Position.Y = Position.Y + 20;
+                }
+                double deltaX = playerPosition.X - Position.X;
+                double deltaY = playerPosition.Y - (Position.Y +160);
+                double angleInDegrees = Math.Atan2(deltaY, deltaX);
+                gunAnimation[currentWeapon].rotation = (float)angleInDegrees;
+                gunAnimation[currentWeapon].Update(gameTime);
+            }
+            else if (currentWeapon == 7)
+            {
+                if (gunAnimation[currentWeapon].scaleY < 0)
+                {
+                    gunAnimation[currentWeapon].Position.X = Position.X + 45;
+                }
+                else
+                {
+                    gunAnimation[currentWeapon].Position.X = Position.X + 45;
+                }
+
+                if (currentWeapon == 7)
+                {
+                    gunAnimation[currentWeapon].Position.Y = Position.Y ;
+                }
+                else
+                {
+                    gunAnimation[currentWeapon].Position.Y = Position.Y + 20;
+                }
+                double deltaX = playerPosition.X - Position.X;
+                double deltaY = playerPosition.Y - (Position.Y + 160);
+                double angleInDegrees = Math.Atan2(deltaY, deltaX);
+                if (gunAnimation[currentWeapon].scaleY < 0)
+                {
+                    gunAnimation[currentWeapon].rotation = (float)angleInDegrees - 0.3f;
+                }
+                else {
+                    gunAnimation[currentWeapon].rotation = (float)angleInDegrees  + 0.4f;
+                }
+                gunAnimation[currentWeapon].Update(gameTime);
+            } 
+            else {
+                if (gunAnimation[currentWeapon].scaleY < 0)
+                {
+                    gunAnimation[currentWeapon].Position.X = Position.X + 35;
+                }
+                else
+                {
+                    gunAnimation[currentWeapon].Position.X = Position.X + 25;
+                }
+
+                if (currentWeapon == 6)
+                {
+                    gunAnimation[currentWeapon].Position.Y = Position.Y - 140;
+                }
+                else
+                {
+                    gunAnimation[currentWeapon].Position.Y = Position.Y + 20;
+                }
+                double deltaX = playerPosition.X - Position.X;
+                double deltaY = playerPosition.Y - Position.Y;
+                double angleInDegrees = Math.Atan2(deltaY, deltaX);
+                gunAnimation[currentWeapon].rotation = (float)angleInDegrees;
+                gunAnimation[currentWeapon].Update(gameTime);
+            }
+                
+                
+
+                foreach (Bullet bullet in bullets) // Loop through bullet List with foreach and update
+                {
+                    bullet.Update(gameTime);
+                }
+
+                #region Grenade Control
+
+
+                List<Grenade> grenadeRemoval = new List<Grenade>();
+                foreach (Grenade grenade in grenades) // Loop through bullet List with foreach and update
+                {
+                    grenade.Update(gameTime);
+                    Random rand = new Random();
+                    int chance = rand.Next(0, 1000);
+                    if (chance > 500)
+                    {
+                        Animation smoke = new Animation();
+                        smoke.Initialize(smokeTexture, new Vector2(grenade.Position.X + 8, grenade.Position.Y + 8), 0, 17, 21, 14, 100, Color.White, scaleX, false);
+                        smoke.origin = new Vector2(13.5f, 10.5f);
+                        smoke.scaleX = 1;
+                        smoke.scaleY = 1;
+                        Vector2 speed = new Vector2(0, -1);
+                        Spark spark = new Spark(smoke, speed);
+                        sparks.Add(spark);
+                    }
+
+                    if (grenade.lifeTime < 0)
+                    {
+                        grenadeRemoval.Add(grenade);
+                    }
+                }
+                foreach (Grenade grenade in grenadeRemoval) // Loop through bullet List with foreach and update
+                {
+                    Random rand = new Random();
+                    int temp = rand.Next(0, 10000);
+                    if (temp > 5000)
+                    { explosionSound1.Play(); }
+                    else { explosionSound2.Play(); }
+
+                    Animation ani = new Animation();
+                    ani.Initialize(explosionTexture, new Vector2(grenade.Position.X - 17.25f, grenade.Position.Y - 80.0f), 0, 69, 160, 30, 10, Color.White, 1, false);
+                    Spark spark = new Spark(ani, new Vector2(0, -5));
+                    sparks.Add(spark);
+
+                    grenades.Remove(grenade);
+                }
+
+                
+
+                #endregion
+
+                #region Spark Control
+
+                List<Spark> sparkRemoval = new List<Spark>();
+
+                foreach (Spark spark in sparks) // Loop through bullet List with foreach and update
+                {
+                    spark.sparkAnimation.Position += spark.Speed;
+                    spark.sparkAnimation.Update(gameTime);
+                    if (spark.sparkAnimation.Active == false)
+                    {
+                        sparkRemoval.Add(spark);
+                    }
+                }
+
+                foreach (Spark spark in sparkRemoval) // Loop through bullet List with foreach and update
+                {
+                    sparks.Remove(spark);
+                }
+
+                #endregion
+               }
+
+        // Draw Function
+        public void Draw(SpriteBatch spriteBatch)
+        {
+            ///draw the active Enemy animation
+            //Console.WriteLine("Drawing enemy. Active animation = " + activeAnimation);
+            EnemyAnimation[activeAnimation].Draw(spriteBatch);
+
+            //Console.WriteLine("Drawing bullets");
+            // Loop through bullet List with foreach and draw
+
+            foreach (Spark spark in sparks) // Loop through bullet List with foreach and update
+            {
+                spark.sparkAnimation.Draw(spriteBatch);
+            }
+
+            foreach (Grenade grenade in grenades)
+            {
+                grenade.Draw(spriteBatch);
+            }
+            foreach (Bullet bullet in bullets)
+            {
+                bullet.Draw(spriteBatch);
+            }
+            
+            hitAnimation.Draw(spriteBatch);
+            deathAnimation.Draw(spriteBatch);
+           // Console.WriteLine("Drawing weapon. Current weapon = " +  currentWeapon);
+            //draw the gun
+            if (currentWeapon != 2 || currentWeapon != 5)
+            gunAnimation[currentWeapon].Draw(spriteBatch);
+
+            
+            
+
+
+
+
+
+            //bound box test
+            //spriteBatch.Draw(box, new Vector2((int)Position.X, (int)Position.Y), null, Color.Black, 0, Vector2.Zero, new Vector2(16, 32), SpriteEffects.None, 0);
+            //Console.WriteLine("Enemy drwaing done");
+        }
+    }
+}
