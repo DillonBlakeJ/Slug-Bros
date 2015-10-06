@@ -1,0 +1,51 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Audio;
+using Microsoft.Xna.Framework.Content;
+using Microsoft.Xna.Framework.GamerServices;
+using Microsoft.Xna.Framework.Graphics;
+using Microsoft.Xna.Framework.Input;
+using Microsoft.Xna.Framework.Media;
+
+namespace Project_Slug
+{
+    class QuestionBlock
+    {
+        public int numPowerUps;
+        public int powerUpType;
+        public Rectangle myBox;
+        public static Texture2D[] myTexture;
+        public bool addPowerUp = false;
+
+        public QuestionBlock(int numUps, int type, Vector2 pos)
+        {
+            numPowerUps = numUps;
+            powerUpType = type;
+            myBox = new Rectangle((int)pos.X, (int)pos.Y, 45, 45);
+        }
+
+        public void createPowerUp()
+        {
+            addPowerUp = true;
+        }
+
+        public static void loadContent(ContentManager Content)
+        {
+            myTexture = new Texture2D[2];
+
+            myTexture[0] = Content.Load<Texture2D>("Sprites/questionBlock1");
+            myTexture[1] = Content.Load<Texture2D>("Sprites/questionBlock2");
+        }
+
+        public void Draw(SpriteBatch spriteBatch)
+        {
+            int x = 1;
+            if (numPowerUps > 0) { x = 0; }
+            spriteBatch.Draw(myTexture[x], myBox, Color.White);
+        }
+        
+    }
+}
