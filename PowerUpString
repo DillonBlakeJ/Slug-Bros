@@ -1,0 +1,28 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+
+namespace Project_Slug
+{
+    class PowerUpString
+    {
+        public String msg;
+        public float yPos;
+        public float lifeTime;
+
+        public PowerUpString(String str)
+        {
+            msg = str;
+            lifeTime = 2.0f;
+            yPos = 0.0f;
+        }
+
+        public void Update(float elapsed)
+        {
+            lifeTime -= elapsed;
+            yPos -= .25f;
+        }
+
+    }
+}
