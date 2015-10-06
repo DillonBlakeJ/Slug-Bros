@@ -1,0 +1,114 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Audio;
+using Microsoft.Xna.Framework.Content;
+using Microsoft.Xna.Framework.GamerServices;
+using Microsoft.Xna.Framework.Graphics;
+using Microsoft.Xna.Framework.Input;
+using Microsoft.Xna.Framework.Media;
+
+namespace Project_Slug
+{
+    class Bullet
+    {
+        public Rectangle myBox;             // collision box
+        public Texture2D bulletTexture;     // the bullet image
+        public int bulletType;              // 0 =pistol, 1 = auto-rifle, 2 = shotgun...more later
+        public Vector2 Position;            // position of bullet
+        public Vector2 Speed;               // speed of bullet
+        public int ID;                      // this will be used later for versus and co-op multiplayer.
+        public Player player;
+        public float rotation;
+        public float lifeTime;
+
+        public int power;
+
+        public Bullet(Texture2D texture, Rectangle collisionBox, int type, Vector2 pos, float rot, int id, Player plyr)
+        {
+            myBox = collisionBox;
+            bulletTexture = texture;
+            bulletType = type;
+            Position = pos;
+            
+            ID = id;
+
+            rotation = rot;
+            double rotate = (double)rotation;
+            if (type == 0)
+            {
+                Speed.Y = (float)(10.0 * Math.Sin(rotate));
+                Speed.X = (float)(10.0 * Math.Cos(rotate));
+                power = 10;
+            }
+            else if (type == 1)
+            {
+                Speed.Y = (float)(15.0 * Math.Sin(rotate));
+                Speed.X = (float)(15.0 * Math.Cos(rotate));
+                power = 7;
+            }
+            else if (type == 2)
+            {
+                Speed.Y = (float)(15.0 * Math.Sin(rotate));
+                Speed.X = (float)(15.0 * Math.Cos(rotate));
+                power = 10;
+            }
+            else if (type == 3)
+            {
+                Speed.Y = (float)(30.0 * Math.Sin(rotate));
+                Speed.X = (float)(30.0 * Math.Cos(rotate));
+                power = 50;
+            }
+            else if (type == 4)
+            {
+                Speed.Y = (float)(10.0 * Math.Sin(rotate));
+                Speed.X = (float)(10.0 * Math.Cos(rotate));
+                power = 100;
+            }
+            else if (type == 6)
+            {
+                Speed.Y = (float)(15.0 * Math.Sin(rotate));
+                Speed.X = (float)(15.0 * Math.Cos(rotate));
+                power = 6;
+            }
+            else if (type == 7)
+            {
+                power = 100;
+            }
+            else if (type == 8)
+            {
+                power = 10;
+                Speed.Y = (float)(15.0 * Math.Sin(rotate));
+                Speed.X = (float)(15.0 * Math.Cos(rotate));
+                Speed.Y = (float)Speed.Y / 4;
+                Speed.X = (float)Speed.X / 4;
+            }
+            player = plyr;
+
+            lifeTime = 5.0f;
+            if (type == 6)
+            {
+                Speed.Y = (float)Speed.Y / 4;
+                Speed.X = (float)Speed.X / 4;
+            }
+        }
+
+        public void Update(GameTime gameTime)
+        {
+            float elapsed = (float)gameTime.ElapsedGameTime.TotalSeconds;
+
+            lifeTime -= elapsed;
+
+            Position += Speed;
+            myBox.X = (int)Position.X;
+            myBox.Y = (int)Position.Y;
+        }
+
+        public void Draw(SpriteBatch spriteBatch)
+        {
+            spriteBatch.Draw(bulletTexture, Position, null, Color.White, rotation, new Vector2(18, 7),new Vector2(1,1), SpriteEffects.None, 0);
+        }
+    }
+}
