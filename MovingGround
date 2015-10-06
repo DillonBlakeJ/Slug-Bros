@@ -1,0 +1,59 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Audio;
+using Microsoft.Xna.Framework.Content;
+using Microsoft.Xna.Framework.GamerServices;
+using Microsoft.Xna.Framework.Graphics;
+using Microsoft.Xna.Framework.Input;
+using Microsoft.Xna.Framework.Media;
+
+
+namespace Project_Slug
+{
+    class MovingGround
+    {
+        public Vector2 Position;
+        public Vector2 Speed;
+        public Vector2 Limit1;
+        public Vector2 Limit2;
+        public Rectangle myBox;
+        public int ID;
+
+        public MovingGround(Rectangle bounds, int id, Vector2 position, Vector2 speed, Vector2 limits1, Vector2 limits2)
+        {
+            ID = id;
+            myBox = bounds;
+            Speed = speed;
+            Limit1 = limits1;
+            Limit2 = limits2;
+            Position = position;
+        }
+
+        public void Update()
+        {
+            Position += Speed;
+            myBox.X = (int)Position.X;
+            myBox.Y = (int)Position.Y;
+
+            if (Position.X > Limit2.X)
+            {
+                Speed.X = Speed.X * -1;
+            }
+            if (Position.X < Limit1.X)
+            {
+                Speed.X = Speed.X * -1;
+            }
+            if (Position.Y > Limit2.Y)
+            {
+                Speed.Y = Speed.Y * -1;
+            }
+            if (Position.Y < Limit1.Y)
+            {
+                Speed.Y = Speed.Y * -1;
+            }
+        }
+    }
+}
