@@ -1,0 +1,195 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Audio;
+using Microsoft.Xna.Framework.Content;
+using Microsoft.Xna.Framework.GamerServices;
+using Microsoft.Xna.Framework.Graphics;
+using Microsoft.Xna.Framework.Input;
+using Microsoft.Xna.Framework.Media;
+
+namespace Project_Slug
+{
+    class PowerUp
+    {
+        public Vector2 Position;
+        public Vector2 Speed;
+        public Texture2D myTexture;
+        public int type;
+        public Rectangle myBox;
+
+        public Rectangle currentGroundBox;
+
+        public static SoundEffect[] powerUpSounds;
+        public static Texture2D[] powerUpTextures;
+
+        public bool isOnGround;
+
+        public static Texture2D box;     //this holds all the different textures
+
+        public void detectGroundCollision(Rectangle otherObject)
+        {
+            //myBox.X = (int)Position.X + (int)Speed.X;
+            //myBox.Y = (int)Position.Y + (int)Speed.Y;
+
+            #region Player collision
+
+            myBox.X = (int)Position.X;
+            myBox.Y = (int)Position.Y;
+
+            if (myBox.Intersects(otherObject))
+            {
+                //Console.WriteLine("Collision.");
+                //above the ground
+                if (myBox.Y < otherObject.Y)
+                {
+                    //Console.WriteLine("above Ground.");
+                    if (((myBox.X + 16) > otherObject.X) && ((myBox.X + 16) < (otherObject.X + otherObject.Width)))
+                    {
+                        currentGroundBox = otherObject;
+                        isOnGround = true;
+                        if (Speed.Y >= 0)
+                        {
+                            Speed.Y = 0;
+                            Position.Y = otherObject.Y - 32;
+                        }
+                    }
+                }
+                //below ground
+                else if (Speed.Y < 0 && ((myBox.Y) < (otherObject.Y + otherObject.Height)) && ((myBox.Y) > (otherObject.Y + otherObject.Height + Speed.Y - 2)))
+                {
+                    //Console.WriteLine("below Ground.");
+                    if (((myBox.X + 8) > otherObject.X) && ((myBox.X + 8) < (otherObject.X + otherObject.Width)))
+                    {
+                        Speed.Y = -Speed.Y;
+                        Position.Y = otherObject.Y + otherObject.Height;
+                    }
+                }
+                //next to
+                else
+                {
+                    //Console.WriteLine("beside Ground.");
+                    if (myBox.X > otherObject.X)
+                    {
+                        Speed.X = -Speed.X;
+                        Position.X = otherObject.X + otherObject.Width;
+                    }
+                    else
+                    {
+                        Speed.X = -Speed.X;
+                        Position.X = otherObject.X - 32;
+                    }
+                }
+
+            }
+            else
+            {
+                //Console.WriteLine("here.");
+                if (isOnGround == true && (otherObject == currentGroundBox))
+                {
+                    //Console.WriteLine("here 2.");
+                    if ((myBox.Y + 20) < otherObject.Y && ((myBox.Y + 32 + Speed.Y) > otherObject.Y))
+                    {
+                        //Console.WriteLine("here 3.");
+                        if (((myBox.X + 8) > otherObject.X) && ((myBox.X + 8) < (otherObject.X + otherObject.Width)))
+                        {
+                            //Console.WriteLine("here 4.");
+                            isOnGround = true;
+                            if (Speed.Y >= 0)
+                            {
+                                Speed.Y = 0;
+                                Position.Y = otherObject.Y - 32;
+                            }
+                        }
+                    }
+                    else
+                    {
+                        isOnGround = false;
+                    }
+                }
+            }
+
+            #endregion
+
+        }
+
+        public static void loadContent(ContentManager Content, GraphicsDevice graphics)
+        {
+            powerUpSounds = new SoundEffect[7];
+            powerUpTextures = new Texture2D[7];
+
+            box = new Texture2D(graphics, 1, 1);
+            box.SetData<Color>(new Color[] { Color.White });
+
+            powerUpSounds[0] = Content.Load<SoundEffect>("Sounds/grenadePickup");
+            powerUpSounds[1] = Content.Load<SoundEffect>("Sounds/machineGunPickup");
+            powerUpSounds[2] = Content.Load<SoundEffect>("Sounds/shotgunPickup");
+            powerUpSounds[3] = Content.Load<SoundEffect>("Sounds/sniperPickup");
+            powerUpSounds[4] = Content.Load<SoundEffect>("Sounds/rocketPickup");
+            powerUpSounds[5] = Content.Load<SoundEffect>("Sounds/swordPickup");
+            powerUpSounds[6] = Content.Load<SoundEffect>("Sounds/healthPickup");
+
+            //load all the textures
+            powerUpTextures[0] = Content.Load<Texture2D>("Sprites/grenadePowerUp");
+            powerUpTextures[1] = Content.Load<Texture2D>("Sprites/machineGunPowerUp");
+            powerUpTextures[2] = Content.Load<Texture2D>("Sprites/shotgunPowerUp");
+            powerUpTextures[3] = Content.Load<Texture2D>("Sprites/sniperPowerUp");
+            powerUpTextures[4] = Content.Load<Texture2D>("Sprites/rocketPowerUp");
+            powerUpTextures[5] = Content.Load<Texture2D>("Sprites/swordPowerUp");
+            powerUpTextures[6] = Content.Load<Texture2D>("Sprites/healthPowerUp");
+        }
+
+        public PowerUp(Vector2 Pos, Vector2 Sped, Texture2D tex, int t)
+        {
+            isOnGround = false;
+            Position = Pos;
+            Speed = Sped;
+            myTexture = tex;
+            type = t;
+
+            myBox = new Rectangle((int)Pos.X, (int)Pos.Y, 32, 32);
+        }
+
+        public void Update(GameTime gameTime)
+        {
+            float elapsed = (float)gameTime.ElapsedGameTime.TotalSeconds;
+
+            //update speed and gravity
+            Position += Speed;
+            if (isOnGround == false)
+            {
+                Speed.Y += 9 * elapsed;
+            }
+            myBox.X = (int)Position.X;
+            myBox.Y = (int)Position.Y;
+        }
+
+        public void Draw(SpriteBatch spriteBatch)
+        {
+            spriteBatch.Draw(myTexture, Position, null, Color.White, 0, Vector2.Zero, new Vector2(1, 1), SpriteEffects.None, 0);
+            //spriteBatch.Draw(box, new Vector2((int)myBox.X, (int)myBox.Y), null, Color.Black, 0, Vector2.Zero, new Vector2(myBox.Width, myBox.Height), SpriteEffects.None, 0);
+        }
+
+        public void powerUpPlayer(Player player)
+        {
+            String str = "";
+           
+            switch(type)
+            {
+                case 0: player.numGrenades += 5; str = "+5 Bombs"; break;
+                case 1: player.ammo[1] += 100; str = "+100 MG Ammo"; break;
+                case 2: player.ammo[2] += 20; str = "+20 SG Ammo"; break;
+                case 3: player.ammo[3] += 30; str = "+30 SR Ammo"; break;
+                case 4: player.ammo[4] += 10; str = "+10 RL Ammo"; break;
+                case 5: player.ammo[5] += 10; str = "+10 Sword Energy"; break;
+                case 6: player.health += 100; str = "Full Health"; break;
+            }
+
+            PowerUpString pUp = new PowerUpString(str);
+            player.PowerUpStrings.Add(pUp);
+
+        }
+    }
+}
