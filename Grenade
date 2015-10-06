@@ -1,0 +1,127 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Audio;
+using Microsoft.Xna.Framework.Content;
+using Microsoft.Xna.Framework.GamerServices;
+using Microsoft.Xna.Framework.Graphics;
+using Microsoft.Xna.Framework.Input;
+using Microsoft.Xna.Framework.Media;
+
+namespace Project_Slug
+{
+    class Grenade
+    {
+        public Rectangle myBox;             // collision box
+        public Texture2D grenadeTexture;    // the bullet image
+        public int grenadeType;              // 0 =pistol, 1 = auto-rifle, 2 = shotgun...more later
+        public Vector2 Position;            // position of bullet
+        public Vector2 Speed;               // speed of bullet
+        public int ID;                      // this will be used later for versus and co-op multiplayer.
+        public Player player;
+        float rotation;
+        public float lifeTime;
+        Vector2 origin;
+
+        public Grenade(Texture2D texture, Rectangle collisionBox, int type, Vector2 pos, int id, Vector2 ori, float rot)
+        {
+            origin = ori;
+            myBox = collisionBox;
+            grenadeTexture = texture;
+            grenadeType = type;
+            Position = pos;
+
+            ID = id;
+
+            rotation = 0;
+            rotation = rot;
+            double rotate = (double)rotation;
+            if (type == 0)
+            {
+                Speed.Y = (float)(10.0 * Math.Sin(rotate));
+                Speed.X = (float)(10.0 * Math.Cos(rotate));
+            }
+            else if (type == 1)
+            {
+                Speed.Y = (float)(10.0 * Math.Sin(rotate));
+                Speed.X = (float)(10.0 * Math.Cos(rotate));
+            }
+            else if (type == 6)
+            {
+                Speed.Y = (float)(10.0 * Math.Sin(rotate));
+                Speed.X = (float)(10.0 * Math.Cos(rotate));
+                rotate = rotate / 10;
+            }
+
+            rotation = 0;
+            
+
+            lifeTime = 2.0f;
+            if (type == 6)
+            {
+                Speed.Y = Speed.Y / 8f;
+                Speed.X = Speed.X / 2f;
+                lifeTime = 4.0f;
+            }
+        }
+
+        public Grenade(Texture2D texture, Rectangle collisionBox, int type, Vector2 pos, int id, Player plyr, Vector2 ori, float rot)
+        {
+            origin = ori;
+            myBox = collisionBox;
+            grenadeTexture = texture;
+            grenadeType = type;
+            Position = pos;
+            
+            ID = id;
+
+            rotation = 0;
+            rotation = rot;
+            double rotate = (double)rotation;
+            if (type == 0)
+            {
+                Speed.Y = (float)(10.0 * Math.Sin(rotate));
+                Speed.X = (float)(10.0 * Math.Cos(rotate));
+            }
+            else if (type == 1)
+            {
+                Speed.Y = (float)(10.0 * Math.Sin(rotate));
+                Speed.X = (float)(10.0 * Math.Cos(rotate));
+            }
+
+            rotation = 0;
+            player = plyr;
+
+            lifeTime = 2.0f;
+        }
+
+        public void Update(GameTime gameTime)
+        {
+            float elapsed = (float)gameTime.ElapsedGameTime.TotalSeconds;
+
+            lifeTime -= elapsed;
+
+            //update speed and gravity
+            Position += Speed;
+            Speed.Y += 9 * elapsed;
+            myBox.X = (int)Position.X;
+            myBox.Y = (int)Position.Y;
+
+            if (Speed.X >= 0)
+            {
+                rotation++;
+            }
+            else
+            {
+                rotation--;
+            }
+        }
+
+        public void Draw(SpriteBatch spriteBatch)
+        {
+            spriteBatch.Draw(grenadeTexture, Position, null, Color.White, rotation, origin,new Vector2(1,1), SpriteEffects.None, 0);
+        }
+    }
+}
