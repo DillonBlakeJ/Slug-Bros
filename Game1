@@ -1,0 +1,2426 @@
+using System;
+using System.Globalization;
+using System.Collections.Generic;
+using System.Linq;
+using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Audio;
+using Microsoft.Xna.Framework.Content;
+using Microsoft.Xna.Framework.GamerServices;
+using Microsoft.Xna.Framework.Graphics;
+using Microsoft.Xna.Framework.Input;
+using Microsoft.Xna.Framework.Media;
+
+namespace Project_Slug
+{
+    /// <summary>
+    /// This is the main type for your game
+    /// </summary>
+    /// 
+
+    public class Game1 : Microsoft.Xna.Framework.Game
+    {
+        #region Variables
+
+        GraphicsDeviceManager graphics;
+        SpriteBatch spriteBatch;
+        int gravity;
+
+        Random multiplayerRandom1 = new Random();
+        Random multiplayerRandom2 = new Random();
+        Random multiplayerRandom3 = new Random();
+        Random multiplayerRandom4 = new Random();
+        Random multiplayerRandom5 = new Random();
+        Random multiplayerRandom6 = new Random();
+
+        Player[] players;
+
+        List<Ground> grounds = new List<Ground>();
+        List<MovingGround> movingGrounds = new List<MovingGround>();
+
+        List<Ground> specialGrounds = new List<Ground>();
+
+        public Texture2D[] level_3_background;
+        public Texture2D[] level_1_background;
+        public Texture2D[] level_2_background;
+
+        public Texture2D clouds1;
+        public Texture2D clouds2;
+
+        Texture2D[] playerIcons;
+
+        public Texture2D movingPlatformTexture;
+
+        public Texture2D titleBackgroundTexture;
+        public Texture2D controlsBackgroundTexture;
+        public Texture2D mapTexture;
+        public Texture2D menuOptions1Texture;
+        public Texture2D menuOptions2Texture;
+        public Texture2D menuCursorTexture;
+        public Texture2D pausedMenuTexture;
+        public int menuOption;
+        public KeyboardState oldKState;
+        public GamePadState oldGamePadState;
+        public Texture2D lakituTexture;
+        public Texture2D deathBlood;
+
+
+
+        public Texture2D backGround;
+
+        List<Foreground> foregrounds = new List<Foreground>();
+        List<Foreground> backgrounds = new List<Foreground>();
+
+        public Texture2D[] hudTextures;
+
+        Texture2D[] versusBackgrounds;
+        Texture2D[] versusForegrounds;
+        int level;
+
+
+        public static SoundEffect[] deathSounds;
+
+        public static SpriteFont font;
+        public static SpriteFont font2;
+        public static SpriteFont font3;
+
+        SoundEffect menuMusic;
+        SoundEffect level1Music;
+        SoundEffect undergroundMusic;
+        SoundEffect bossMusic;
+        SoundEffect headHitSound;
+        SoundEffect pipeSound;
+        SoundEffect squish;
+
+        SoundEffect hyruleMusic;
+        SoundEffectInstance hyruleInstance;
+
+        SoundEffectInstance menuInstance;
+        SoundEffectInstance level1Instance;
+        SoundEffectInstance undergroundInstance;
+        SoundEffectInstance bossInstance;
+        InstancePlayLimitException dude;
+
+        SoundEffect menuBackSound;
+        SoundEffect menuScrollSound;
+        SoundEffect menuSelectSound;
+
+
+        float cloud1Offset;
+        float cloud2Offset;
+
+        Matrix camera;
+
+        public int gameState;
+        public int numPlayers;
+        public int check = 0;
+
+
+        Rectangle viewport;
+        Vector2 mainOffset;
+        Ground[] viewportGrounds;
+
+        int levelWidth;
+        int windowWidth;
+        float overallScale;
+
+        public static int difficulty;
+
+        List<PowerUp> powerUps = new List<PowerUp>();
+
+        List<QuestionBlock> questionBlocks = new List<QuestionBlock>();
+
+        bool endLevel;
+        float endTimer;
+        public bool isBoss = false;
+        public bool bossFight = false;
+        public int win = 0;
+        public bool complete = false;
+        public int[] deaths = new int[4];
+
+        List<Enemy> enemies = new List<Enemy>();
+        List<Enemy> enemiesRemoval = new List<Enemy>();
+        List<Enemy> boss = new List<Enemy>();
+
+        public struct Spark
+        {
+            public Animation sparkAnimation;
+            public Vector2 Speed;
+
+            public Spark(Animation ani, Vector2 sped)
+            {
+                this.sparkAnimation = ani;
+                this.Speed = sped;
+            }
+        }
+
+        public List<Spark> sparks = new List<Spark>();
+
+
+
+        #endregion
+
+        void graphics_PreparingDeviceSettings(object sender, PreparingDeviceSettingsEventArgs e)
+        {
+            DisplayMode displayMode = GraphicsAdapter.DefaultAdapter.CurrentDisplayMode;
+            e.GraphicsDeviceInformation.PresentationParameters.BackBufferFormat = displayMode.Format;
+            e.GraphicsDeviceInformation.PresentationParameters.BackBufferWidth = displayMode.Width - 200;
+            e.GraphicsDeviceInformation.PresentationParameters.BackBufferHeight = displayMode.Height - 113;
+
+
+        }
+
+        public Game1()
+        {
+            graphics = new GraphicsDeviceManager(this);
+            //graphics.IsFullScreen = true;
+            graphics.PreferredBackBufferHeight = 640;
+            graphics.PreferredBackBufferWidth = 1136;
+            Resolution.Init(ref graphics);
+            DisplayMode displayMode = GraphicsAdapter.DefaultAdapter.CurrentDisplayMode;
+            Resolution.SetVirtualResolution(1136, 640);
+            Resolution.SetResolution(displayMode.Width - 200, displayMode.Height - 113, false);
+
+
+            windowWidth = displayMode.Width - 200;
+            //graphics.PreparingDeviceSettings += new EventHandler<PreparingDeviceSettingsEventArgs>(graphics_PreparingDeviceSettings);
+
+            Content.RootDirectory = "Content";
+            TargetElapsedTime = new TimeSpan(0, 0, 0, 0, 16);
+            IsFixedTimeStep = true;
+
+            gameState = 0;
+            numPlayers = 1;
+            menuOption = 0;
+
+            dude = new InstancePlayLimitException("Too many sounds\n");
+        }
+
+        void UpdateInput(GamePadState currentState, Player player, int playerIndex)
+        {
+            // Process input only if connected and button A is pressed.
+            if (currentState.IsConnected && currentState.Buttons.A == ButtonState.Pressed) { player.aPressed = true; }
+            else { player.aPressed = false; }
+
+            if (currentState.IsConnected && currentState.Buttons.B == ButtonState.Pressed) { player.bPressed = true; }
+            else { player.bPressed = false; }
+
+            if (currentState.IsConnected && currentState.Buttons.X == ButtonState.Pressed) { player.xPressed = true; }
+            else { player.xPressed = false; }
+
+            if (currentState.IsConnected && currentState.Buttons.Y == ButtonState.Pressed) { player.yPressed = true; }
+            else { player.yPressed = false; }
+
+            if (currentState.IsConnected && currentState.Buttons.Start == ButtonState.Pressed) { player.startPressed = true; }
+            else { player.startPressed = false; }
+
+            if (currentState.IsConnected && currentState.Buttons.LeftShoulder == ButtonState.Pressed) { player.leftBumperPressed = true; }
+            else { player.leftBumperPressed = false; }
+
+            if (currentState.IsConnected && currentState.Buttons.Back == ButtonState.Pressed) { player.backPressed = true; }
+            else { player.backPressed = false; }
+
+            if (currentState.IsConnected && currentState.DPad.Left == ButtonState.Pressed) { player.dPadLeftPressed = true; }
+            else { player.dPadLeftPressed = false; }
+
+            if (currentState.IsConnected && currentState.DPad.Right == ButtonState.Pressed) { player.dPadRightPressed = true; }
+            else { player.dPadRightPressed = false; }
+
+            if (currentState.IsConnected && currentState.DPad.Up == ButtonState.Pressed) { player.dPadUpPressed = true; }
+            else { player.dPadUpPressed = false; }
+
+            if (currentState.IsConnected && currentState.Triggers.Right > .12f) { player.rightTriggerPressed = true; }
+            else { player.rightTriggerPressed = false; }
+
+            if (currentState.IsConnected && currentState.Triggers.Left > .12f) { player.leftTriggerPressed = true; }
+            else { player.leftTriggerPressed = false; }
+
+            if (currentState.IsConnected)
+            {
+                player.LeftStick = currentState.ThumbSticks.Left;
+                if (Math.Sqrt(Math.Pow(currentState.ThumbSticks.Right.X, 2) + Math.Pow(currentState.ThumbSticks.Right.Y, 2)) > .9)
+                {
+                    player.RightStick = currentState.ThumbSticks.Right;
+                }
+            }
+
+            if (playerIndex == 1)
+            {
+                GamePad.SetVibration(PlayerIndex.One, player.vibration, player.vibration);
+            }
+            else if (playerIndex == 2)
+            {
+                GamePad.SetVibration(PlayerIndex.Two, player.vibration, player.vibration);
+            }
+            else if (playerIndex == 3)
+            {
+                GamePad.SetVibration(PlayerIndex.Three, player.vibration, player.vibration);
+            }
+            else if (playerIndex == 4)
+            {
+                GamePad.SetVibration(PlayerIndex.Four, player.vibration, player.vibration);
+            }
+        }
+
+        void reInit()
+        {
+            endLevel = false;
+
+            menuOption = 0;
+
+
+            menuInstance.Volume = 0.2f;
+            level1Instance.Volume = 0.1f;
+            bossInstance.Volume = 0.3f;
+            undergroundInstance.Volume = 0.1f;
+
+            grounds.Clear();
+            movingGrounds.Clear();
+            questionBlocks.Clear();
+            powerUps.Clear();
+            enemies.Clear();
+
+            foregrounds.Clear();
+            backgrounds.Clear();
+
+            if (gameState == 200)       //gamestate 200 is "How to play" screen
+            {
+                Ground ground = new Ground(new Rectangle(-500, 550, 2000, 69), 1);
+                grounds.Add(ground);
+
+                for (int x = 0; x < numPlayers; x++)
+                {
+                    players[x].lives = 3;
+                    players[x].health = 100;
+                    players[x].isDead = false;
+                }
+            }
+            else if (gameState == 100)
+            {
+                #region Load Level 1
+
+                #region enemy init
+
+                Enemy enemy = new Enemy();
+                enemy.Initialize(new Vector2(1728, 300), 9, 0);
+                enemies.Add(enemy);
+                enemy = new Enemy();
+                enemy.Initialize(new Vector2(1892, 456), 9, 0);
+                enemies.Add(enemy);
+                enemy = new Enemy();
+                enemy.Initialize(new Vector2(2076, 200), 9, 0);
+                enemies.Add(enemy);
+                enemy = new Enemy();
+                enemy.Initialize(new Vector2(2226, 400), 9, 0);
+                enemies.Add(enemy);
+                enemy = new Enemy();
+                enemy.Initialize(new Vector2(2374, 400), 9, 0);
+                enemies.Add(enemy);
+                enemy = new Enemy();
+                enemy.Initialize(new Vector2(2540, 280), 9, 1);
+                enemies.Add(enemy);
+                enemy = new Enemy();
+                enemy.Initialize(new Vector2(2736, 400), 9, 0);
+                enemies.Add(enemy);
+                enemy = new Enemy();
+                enemy.Initialize(new Vector2(2908, 460), 9, 0);
+                enemies.Add(enemy);
+                enemy = new Enemy();
+                enemy.Initialize(new Vector2(3282, 430), 9, 0);
+                enemies.Add(enemy);
+                enemy = new Enemy();
+                enemy.Initialize(new Vector2(3452, 250), 9, 0);
+                enemies.Add(enemy);
+                enemy = new Enemy();
+                enemy.Initialize(new Vector2(3644, 90), 9, 1);
+                enemies.Add(enemy);
+                enemy = new Enemy();
+                enemy.Initialize(new Vector2(3786, 90), 9, 0);
+                enemies.Add(enemy);
+                enemy = new Enemy();
+                enemy.Initialize(new Vector2(3546, 90), 9, 2);
+                enemies.Add(enemy);
+                enemy = new Enemy();
+                enemy.Initialize(new Vector2(3676, 430), 9, 0);
+                enemies.Add(enemy);
+                enemy = new Enemy();
+                enemy.Initialize(new Vector2(4032, 440), 9, 0);
+                enemies.Add(enemy);
+                enemy = new Enemy();
+                enemy.Initialize(new Vector2(4140, 90), 9, 0);
+                enemies.Add(enemy);
+                enemy = new Enemy();
+                enemy.Initialize(new Vector2(4518, 454), 9, 0);
+                enemies.Add(enemy);
+                enemy = new Enemy();
+                enemy.Initialize(new Vector2(5240, 440), 9, 0);
+                enemies.Add(enemy);
+                enemy = new Enemy();
+                enemy.Initialize(new Vector2(5404, 100), 9, 0);
+                enemies.Add(enemy);
+                enemy = new Enemy();
+                enemy.Initialize(new Vector2(5738, 100), 9, 0);
+                enemies.Add(enemy);
+                enemy = new Enemy();
+                enemy.Initialize(new Vector2(6428, 400), 9, 0);
+                enemies.Add(enemy);
+                enemy = new Enemy();
+                enemy.Initialize(new Vector2(6490, 400), 9, 1);
+                enemies.Add(enemy);
+                enemy = new Enemy();
+                enemy.Initialize(new Vector2(6720, 270), 9, 0);
+                enemies.Add(enemy);
+                enemy = new Enemy();
+                enemy.Initialize(new Vector2(7062, 430), 9, 0);
+                enemies.Add(enemy);
+                enemy = new Enemy();
+                enemy.Initialize(new Vector2(7226, 350), 9, 0);
+                enemies.Add(enemy);
+                enemy = new Enemy();
+                enemy.Initialize(new Vector2(7544, 450), 9, 0);
+                enemies.Add(enemy);
+                enemy = new Enemy();
+                enemy.Initialize(new Vector2(7716, 450), 9, 0);
+                enemies.Add(enemy);
+                enemy = new Enemy();
+                enemy.Initialize(new Vector2(7936, 370), 9, 0);
+                enemies.Add(enemy);
+                enemy = new Enemy();
+                enemy.Initialize(new Vector2(8326, 98), 9, 2);
+                enemies.Add(enemy);
+                #endregion
+
+                for (int x = 0; x < numPlayers; x++)
+                {
+                    players[x].lives = 3;
+                    players[x].health = 100;
+                    players[x].isDead = false;
+                    for (int i = 0; x < numPlayers; x++)
+                    {
+                        players[x].ammo[i] = 0;
+                    }
+                }
+
+                Foreground foreground = new Foreground(Content.Load<Texture2D>("Sprites/level1Pipe"), new Vector2(9375, 408), 0, 1);
+                foregrounds.Add(foreground);
+                foreground = new Foreground(Content.Load<Texture2D>("Sprites/pipeForeground"), new Vector2(3000, 380), 2.0f, 1.5f);
+                foregrounds.Add(foreground);
+
+                foreground = new Foreground(Content.Load<Texture2D>("Sprites/parallaxMountains3"), new Vector2(2500, 180), .05f, 1.5f);
+                backgrounds.Add(foreground);
+
+                foreground = new Foreground(Content.Load<Texture2D>("Sprites/pipeForeground"), new Vector2(2650, 420), .1f, 0.5f);
+                backgrounds.Add(foreground);
+
+
+
+                for (int i = 0; i < 4; i++)
+                {
+                    if (gameState == 103 || gameState == 100 || gameState == 200 || gameState == 101)
+                    {
+                        players[i].Position = new Vector2(100 + i * 10, 300);
+                        players[i].Speed = new Vector2(0, 0);
+                    }
+                }
+
+                levelWidth = 9640;
+
+                Rectangle[] rect = new Rectangle[54];
+                //Floor
+                rect[1] = new Rectangle(0, 492, 3051, 150); rect[3] = new Rectangle(3142, 492, 662, 150);
+                rect[2] = new Rectangle(3938, 492, 2829, 150); rect[4] = new Rectangle(6856, 492, 3000, 150);
+                Ground ground = new Ground(rect[1], 1);
+                grounds.Add(ground);
+                ground = new Ground(rect[2], 1);
+                grounds.Add(ground);
+                ground = new Ground(rect[3], 1);
+                grounds.Add(ground);
+                ground = new Ground(rect[4], 1);
+                grounds.Add(ground);
+
+
+                //Pipes
+                rect[5] = new Rectangle(462, 149, 33, 34); rect[8] = new Rectangle(942, 117, 31, 67);
+                rect[6] = new Rectangle(628, 135, 32, 49); rect[27] = new Rectangle(2693, 150, 31, 34);
+                rect[7] = new Rectangle(760, 117, 31, 67); rect[28] = new Rectangle(2958, 150, 30, 33);
+
+                //Floating Bricks
+                rect[9] = new Rectangle(264, 117, 17, 16); rect[18] = new Rectangle(0, 0, 0, 0);
+                rect[10] = new Rectangle(0, 0, 0, 0); rect[19] = new Rectangle(0, 0, 0, 0);
+                rect[11] = new Rectangle(363, 51, 16, 16); rect[20] = new Rectangle(0, 0, 0, 0);
+                rect[12] = new Rectangle(0, 0, 0, 0); rect[21] = new Rectangle(0, 0, 0, 0);
+                rect[13] = new Rectangle(1270, 116, 52, 18); rect[22] = new Rectangle(1948, 117, 18, 18);
+                rect[14] = new Rectangle(1320, 50, 134, 18); rect[23] = new Rectangle(1998, 51, 51, 17);
+                rect[15] = new Rectangle(1502, 50, 67, 18); rect[24] = new Rectangle(2129, 117, 35, 18);
+                rect[16] = new Rectangle(1551, 117, 19, 18); rect[25] = new Rectangle(2113, 51, 67, 17);
+                rect[17] = new Rectangle(1650, 117, 35, 18); rect[26] = new Rectangle(0, 0, 0, 0);
+
+                //Blocks
+                rect[29] = new Rectangle(2211, 166, 68, 18); rect[37] = new Rectangle(2443, 166, 84, 18); rect[45] = new Rectangle(3104, 50, 34, 132);
+                rect[30] = new Rectangle(2228, 150, 51, 16); rect[38] = new Rectangle(2460, 149, 68, 17); rect[46] = new Rectangle(3088, 67, 16, 117);
+                rect[31] = new Rectangle(2245, 134, 34, 16); rect[39] = new Rectangle(2477, 133, 50, 17); rect[47] = new Rectangle(3071, 84, 16, 99);
+                rect[32] = new Rectangle(2262, 116, 18, 17); rect[40] = new Rectangle(2493, 117, 35, 16); rect[48] = new Rectangle(3054, 100, 18, 83);
+                rect[33] = new Rectangle(2311, 167, 68, 16); rect[41] = new Rectangle(2559, 167, 67, 17); rect[49] = new Rectangle(3038, 117, 18, 65);
+                rect[34] = new Rectangle(2311, 150, 51, 17); rect[42] = new Rectangle(2559, 150, 51, 17); rect[50] = new Rectangle(3021, 133, 18, 49);
+                rect[35] = new Rectangle(2311, 133, 35, 17); rect[43] = new Rectangle(2559, 133, 34, 17); rect[51] = new Rectangle(3004, 150, 19, 33);
+                rect[36] = new Rectangle(2311, 117, 18, 17); rect[44] = new Rectangle(2559, 117, 19, 17); rect[52] = new Rectangle(2987, 166, 18, 18);
+                rect[53] = new Rectangle(3268, 167, 19, 16);
+
+                for (int r = 5; r < 54; r++)
+                {
+
+                    double x = rect[r].X;
+                    double y = rect[r].Y;
+                    double w = rect[r].Width;
+                    double h = rect[r].Height;
+
+                    x *= 2.6778;
+                    y *= 2.6778;
+                    w *= 2.6778;
+                    h *= 2.6778;
+
+                    rect[r].Height = (int)h;
+                    rect[r].Width = (int)w;
+                    rect[r].X = (int)x;
+                    rect[r].Y = (int)y + 3;
+
+                    Ground ground2 = new Ground(rect[r], 1);
+                    grounds.Add(ground2);
+                }
+
+                ground = new Ground(new Rectangle(9374, 404, 143, 33), 1);
+                grounds.Add(ground);
+                ground = new Ground(new Rectangle(9464, 313, 83, 200), 1);
+                grounds.Add(ground);
+
+                QuestionBlock block = new QuestionBlock(numPlayers, 0, new Vector2(709, 316));
+                questionBlocks.Add(block);
+
+                block = new QuestionBlock(numPlayers, 1, new Vector2(932, 314));
+                questionBlocks.Add(block);
+
+                block = new QuestionBlock(numPlayers, 2, new Vector2(1020, 314));
+                questionBlocks.Add(block);
+
+                block = new QuestionBlock(numPlayers, 3, new Vector2(974, 138));
+                questionBlocks.Add(block);
+
+                block = new QuestionBlock(numPlayers, 3, new Vector2(2830, 271));
+                questionBlocks.Add(block);
+
+                block = new QuestionBlock(numPlayers, 1, new Vector2(4688, 316));
+                questionBlocks.Add(block);
+
+                block = new QuestionBlock(numPlayers, 2, new Vector2(4822, 316));
+                questionBlocks.Add(block);
+
+                block = new QuestionBlock(numPlayers, 3, new Vector2(4954, 316));
+                questionBlocks.Add(block);
+
+                block = new QuestionBlock(numPlayers, 6, new Vector2(4822, 139));
+                questionBlocks.Add(block);
+
+                block = new QuestionBlock(numPlayers, 4, new Vector2(7519, 316));
+                questionBlocks.Add(block);
+
+                #endregion
+
+            }
+            else if (gameState == 101)  //gamestate 103 is level 3
+            {
+                #region Level 2
+
+
+                #region enemy init
+                enemies.Clear();
+                Enemy enemy = new Enemy();
+                enemy.Initialize(new Vector2(1089, 370), 9, 1);
+                enemies.Add(enemy);
+                enemy = new Enemy();
+                enemy.Initialize(new Vector2(1162, 360), 9, 1);
+                enemies.Add(enemy);
+                enemy = new Enemy();
+                enemy.Initialize(new Vector2(1311, 500), 9, 1);
+                enemies.Add(enemy);
+                enemy = new Enemy();
+                enemy.Initialize(new Vector2(1375, 540), 9, 1);
+                enemies.Add(enemy);
+                enemy = new Enemy();
+                enemy.Initialize(new Vector2(1597, 265), 9, 0);
+                enemies.Add(enemy);
+                enemy = new Enemy();
+                enemy.Initialize(new Vector2(1786, 250), 9, 0);
+                enemies.Add(enemy);
+                enemy = new Enemy();
+                enemy.Initialize(new Vector2(1852, 544), 9, 1);
+                enemies.Add(enemy);
+                enemy = new Enemy();
+                enemy.Initialize(new Vector2(2121, 267), 9, 1);
+                enemies.Add(enemy);
+                enemy = new Enemy();
+                enemy.Initialize(new Vector2(2391, 180), 9, 1);
+                enemies.Add(enemy);
+                enemy = new Enemy();
+                enemy.Initialize(new Vector2(2394, 363), 9, 1);
+                enemies.Add(enemy);
+                enemy = new Enemy();
+                enemy.Initialize(new Vector2(2284, 543), 9, 0);
+                enemies.Add(enemy);
+                enemy = new Enemy();
+                enemy.Initialize(new Vector2(2506, 360), 9, 1);
+                enemies.Add(enemy);
+                enemy = new Enemy();
+                enemy.Initialize(new Vector2(2677, 358), 9, 1);
+                enemies.Add(enemy);
+                enemy = new Enemy();
+                enemy.Initialize(new Vector2(2809, 360), 9, 0);
+                enemies.Add(enemy);
+                enemy = new Enemy();
+                enemy.Initialize(new Vector2(2679, 540), 9, 1);
+                enemies.Add(enemy);
+                enemy = new Enemy();
+                enemy.Initialize(new Vector2(2862, 535), 9, 1);
+                enemies.Add(enemy);
+                enemy = new Enemy();
+                enemy.Initialize(new Vector2(3102, 516), 9, 1);
+                enemies.Add(enemy);
+                enemy = new Enemy();
+                enemy.Initialize(new Vector2(3205, 505), 9, 1);
+                enemies.Add(enemy);
+                enemy = new Enemy();
+                enemy.Initialize(new Vector2(3145, 364), 9, 1);
+                enemies.Add(enemy);
+                enemy = new Enemy();
+                enemy.Initialize(new Vector2(3294, 189), 9, 0);
+                enemies.Add(enemy);
+                enemy = new Enemy();
+                enemy.Initialize(new Vector2(3489, 364), 9, 1);
+                enemies.Add(enemy);
+                enemy = new Enemy();
+                enemy.Initialize(new Vector2(3571, 537), 9, 0);
+                enemies.Add(enemy);
+                enemy = new Enemy();
+                enemy.Initialize(new Vector2(3861, 240), 9, 1);
+                enemies.Add(enemy);
+                enemy = new Enemy();
+                enemy.Initialize(new Vector2(4039, 260), 9, 1);
+                enemies.Add(enemy);
+                enemy = new Enemy();
+                enemy.Initialize(new Vector2(3985, 538), 9, 1);
+                enemies.Add(enemy);
+                enemy = new Enemy();
+                enemy.Initialize(new Vector2(4197, 525), 9, 1);
+                enemies.Add(enemy);
+                enemy = new Enemy();
+                enemy.Initialize(new Vector2(4488, 504), 9, 1);
+                enemies.Add(enemy);
+                enemy = new Enemy();
+                enemy.Initialize(new Vector2(4731, 423), 9, 1);
+                enemies.Add(enemy);
+                enemy = new Enemy();
+                enemy.Initialize(new Vector2(4888, 540), 9, 1);
+                enemies.Add(enemy);
+                enemy = new Enemy();
+                enemy.Initialize(new Vector2(5013, 369), 9, 1);
+                enemies.Add(enemy);
+                enemy = new Enemy();
+                enemy.Initialize(new Vector2(5148, 520), 9, 1);
+                enemies.Add(enemy);
+                enemy = new Enemy();
+                enemy.Initialize(new Vector2(5274, 457), 9, 0);
+                enemies.Add(enemy);
+                enemy = new Enemy();
+                enemy.Initialize(new Vector2(5619, 400), 9, 0);
+                enemies.Add(enemy);
+                enemy = new Enemy();
+                enemy.Initialize(new Vector2(5818, 534), 9, 1);
+                enemies.Add(enemy);
+                enemy = new Enemy();
+                enemy.Initialize(new Vector2(6004, 519), 9, 1);
+                enemies.Add(enemy);
+                enemy = new Enemy();
+                enemy.Initialize(new Vector2(6232, 346), 9, 1);
+                enemies.Add(enemy);
+                enemy = new Enemy();
+                enemy.Initialize(new Vector2(6697, 534), 9, 1);
+                enemies.Add(enemy);
+                enemy = new Enemy();
+                enemy.Initialize(new Vector2(6910, 538), 9, 0);
+                enemies.Add(enemy);
+                enemy = new Enemy();
+                enemy.Initialize(new Vector2(6963, 290), 9, 1);
+                enemies.Add(enemy);
+                #endregion
+
+                bossFight = false;
+
+                QuestionBlock block = new QuestionBlock(numPlayers, 0, new Vector2(250, 383));
+                questionBlocks.Add(block);
+
+                block = new QuestionBlock(numPlayers, 1, new Vector2(350, 383));
+                questionBlocks.Add(block);
+
+                block = new QuestionBlock(numPlayers, 2, new Vector2(450, 383));
+                questionBlocks.Add(block);
+
+                block = new QuestionBlock(numPlayers, 5, new Vector2(550, 383));
+                questionBlocks.Add(block);
+
+                block = new QuestionBlock(numPlayers, 6, new Vector2(650, 383));
+                questionBlocks.Add(block);
+
+                block = new QuestionBlock(numPlayers, 6, new Vector2(2240, 450));
+                questionBlocks.Add(block);
+
+                block = new QuestionBlock(numPlayers, 3, new Vector2(2730, 240));
+                questionBlocks.Add(block);
+
+                block = new QuestionBlock(numPlayers, 6, new Vector2(5900, 440));
+                questionBlocks.Add(block);
+
+                Foreground foreground = new Foreground(Content.Load<Texture2D>("Sprites/level1Pipe"), new Vector2(7586, 350), 0, 1);
+                foregrounds.Add(foreground);
+
+                levelWidth = 7767;
+
+                for (int i = 0; i < 4; i++)
+                {
+                    if (gameState == 103 || gameState == 100 || gameState == 200 || gameState == 101)
+                    {
+                        players[i].Position = new Vector2(100 + i * 50, 150);
+                        players[i].Speed = new Vector2(0, 0);
+                    }
+                }
+
+                //Floors and Roof
+                Ground ground = new Ground(new Rectangle(0, -500, 7780, 612), 1);
+                grounds.Add(ground);
+                ground = new Ground(new Rectangle(0, -10, 47, 700), 1);
+                grounds.Add(ground);
+                ground = new Ground(new Rectangle(42, 572, 2901, 69), 1);
+                grounds.Add(ground);
+                ground = new Ground(new Rectangle(3045, 572, 611, 69), 1);
+                grounds.Add(ground);
+                ground = new Ground(new Rectangle(3792, 572, 1692, 69), 1);
+                grounds.Add(ground);
+                ground = new Ground(new Rectangle(5757, 572, 551, 69), 1);
+                grounds.Add(ground);
+                ground = new Ground(new Rectangle(6671, 572, 67, 69), 1);
+                grounds.Add(ground);
+                ground = new Ground(new Rectangle(6782, 572, 70, 69), 1);
+                grounds.Add(ground);
+                ground = new Ground(new Rectangle(6894, 572, 54, 69), 1);
+                grounds.Add(ground);
+                ground = new Ground(new Rectangle(5573, 434, 94, 206), 1);
+                grounds.Add(ground);
+                ground = new Ground(new Rectangle(7311, 434, 455, 206), 1);
+                grounds.Add(ground);
+
+                //Everything Else
+                ground = new Ground(new Rectangle(775, 525, 46, 46), 1);
+                grounds.Add(ground);
+                ground = new Ground(new Rectangle(867, 480, 46, 92), 1);
+                grounds.Add(ground);
+                ground = new Ground(new Rectangle(958, 434, 46, 46 * 3), 1);
+                grounds.Add(ground);
+                ground = new Ground(new Rectangle(1050, 389, 46, 46 * 4), 1);
+                grounds.Add(ground);
+                ground = new Ground(new Rectangle(1140, 389, 46, 46 * 4), 1);
+                grounds.Add(ground);
+                ground = new Ground(new Rectangle(1232, 434, 46, 46 * 3), 1);
+                grounds.Add(ground);
+                ground = new Ground(new Rectangle(1415, 434, 46, 46 * 3), 1);
+                grounds.Add(ground);
+                ground = new Ground(new Rectangle(1506, 480, 46, 46 * 2), 1);
+                grounds.Add(ground);
+
+                ground = new Ground(new Rectangle(1586, 296, 47, 136), 1);
+                grounds.Add(ground);
+                ground = new Ground(new Rectangle(1756, 296, 47, 136), 1);
+                grounds.Add(ground);
+                ground = new Ground(new Rectangle(1928, 296, 47, 136), 1);
+                grounds.Add(ground);
+                ground = new Ground(new Rectangle(1585, 388, 218, 45), 1);
+                grounds.Add(ground);
+                ground = new Ground(new Rectangle(1756, 296, 218, 45), 1);
+                grounds.Add(ground);
+                ground = new Ground(new Rectangle(1930, 388, 218, 45), 1);
+                grounds.Add(ground);
+                ground = new Ground(new Rectangle(2101, 297, 47, 275), 1);
+                grounds.Add(ground);
+
+                ground = new Ground(new Rectangle(2376, 205, 92, 112), 1);
+                grounds.Add(ground);
+                ground = new Ground(new Rectangle(2375, 388, 183, 45), 1);
+                grounds.Add(ground);
+                ground = new Ground(new Rectangle(2466, 410, 93, 162), 1);
+                grounds.Add(ground);
+
+                ground = new Ground(new Rectangle(2649, 390, 275, 42), 1);
+                grounds.Add(ground);
+                ground = new Ground(new Rectangle(3060, 388, 138, 45), 1);
+                grounds.Add(ground);
+                ground = new Ground(new Rectangle(2875, 103, 50, 311), 1);
+                grounds.Add(ground);
+                ground = new Ground(new Rectangle(3058, 103, 50, 311), 1);
+                grounds.Add(ground);
+
+                ground = new Ground(new Rectangle(3289, 217, 91, 355), 1);
+                grounds.Add(ground);
+                ground = new Ground(new Rectangle(3472, 388, 183, 44), 1);
+                grounds.Add(ground);
+
+                ground = new Ground(new Rectangle(3838, 296, 276, 90), 1);
+                grounds.Add(ground);
+
+                //pipes
+                ground = new Ground(new Rectangle(4711, 437, 85, 137), 1);
+                grounds.Add(ground);
+                ground = new Ground(new Rectangle(4984, 389, 85, 182), 1);
+                grounds.Add(ground);
+                ground = new Ground(new Rectangle(5259, 482, 85, 91), 1);
+                grounds.Add(ground);
+
+                //blocks
+                ground = new Ground(new Rectangle(6076, 526, 231 - 46 * 0, 46 * 1), 1);
+                grounds.Add(ground);
+
+                ground = new Ground(new Rectangle(6076 + 46 * 1, 526 - 46 * 1, 231 - 46 * 1, 46 * 2), 1);
+                grounds.Add(ground);
+
+                ground = new Ground(new Rectangle(6076 + 46 * 2, 526 - 46 * 2, 231 - 46 * 2, 46 * 3), 1);
+                grounds.Add(ground);
+
+                ground = new Ground(new Rectangle(6076 + 46 * 3, 526 - 46 * 3, 231 - 46 * 3, 46 * 4), 1);
+                grounds.Add(ground);
+
+                //floating blocks at end
+                ground = new Ground(new Rectangle(6627, 331, 45, 43), 1);
+                grounds.Add(ground);
+                ground = new Ground(new Rectangle(6738, 331, 45, 43), 1);
+                grounds.Add(ground);
+                ground = new Ground(new Rectangle(6851, 331, 45, 43), 1);
+                grounds.Add(ground);
+                ground = new Ground(new Rectangle(6947, 331, 45, 43), 1);
+                grounds.Add(ground);
+
+                //last pipe
+                ground = new Ground(new Rectangle(7686, 2, 80, 432), 1);
+                grounds.Add(ground);
+                ground = new Ground(new Rectangle(7588, 344, 100, 25), 1);
+                grounds.Add(ground);
+
+                //moving platfroms
+                MovingGround mGround = new MovingGround(new Rectangle(0, 0, 138, 24), 2, new Vector2(6386, 300), new Vector2(0, 1.5f), new Vector2(0, 584), new Vector2(0, 178));
+                movingGrounds.Add(mGround);
+                mGround = new MovingGround(new Rectangle(0, 0, 138, 24), 2, new Vector2(7070, 300), new Vector2(0, 1.5f), new Vector2(0, 584), new Vector2(0, 178));
+                movingGrounds.Add(mGround);
+
+                #endregion
+            }
+            else if (gameState == 103)  //gamestate 103 is level 3
+            {
+                #region Load Level 3
+
+                for (int i = 0; i < 4; i++)
+                {
+                    if (gameState == 103 || gameState == 100 || gameState == 200 || gameState == 101)
+                    {
+                        players[i].Position = new Vector2(100 + i * 50, 500);
+                        players[i].Speed = new Vector2(0, 0);
+                    }
+                }
+
+                #region enemy init
+                enemies.Clear();
+                Enemy enemy = new Enemy();
+                enemy.Initialize(new Vector2(1126, 350), 9, 1);
+                enemies.Add(enemy);
+                enemy = new Enemy();
+                enemy.Initialize(new Vector2(1234, 350), 9, 1);
+                enemies.Add(enemy);
+                enemy = new Enemy();
+                enemy.Initialize(new Vector2(1228, 150), 9, 1);
+                enemies.Add(enemy);
+                enemy = new Enemy();
+                enemy.Initialize(new Vector2(1340, 150), 9, 1);
+                enemies.Add(enemy);
+                enemy = new Enemy();
+                enemy.Initialize(new Vector2(1514, 498), 9, 1);
+                enemies.Add(enemy);
+                enemy = new Enemy();
+                enemy.Initialize(new Vector2(1638, 316), 9, 1);
+                enemies.Add(enemy);
+                enemy = new Enemy();
+                enemy.Initialize(new Vector2(1846, 136), 9, 2);
+                enemies.Add(enemy);
+                enemy = new Enemy();
+                enemy.Initialize(new Vector2(2020, 132), 9, 1);
+                enemies.Add(enemy);
+                enemy = new Enemy();
+                enemy.Initialize(new Vector2(2350, 530), 9, 1);
+                enemies.Add(enemy);
+                enemy = new Enemy();
+                enemy.Initialize(new Vector2(2754, 188), 9, 2);
+                enemies.Add(enemy);
+                enemy = new Enemy();
+                enemy.Initialize(new Vector2(2776, 540), 9, 1);
+                enemies.Add(enemy);
+                enemy = new Enemy();
+                enemy.Initialize(new Vector2(3070, 540), 9, 1);
+                enemies.Add(enemy);
+                enemy = new Enemy();
+                enemy.Initialize(new Vector2(3236, 350), 9, 1);
+                enemies.Add(enemy);
+                enemy = new Enemy();
+                enemy.Initialize(new Vector2(3496, 224), 9, 1);
+                enemies.Add(enemy);
+                enemy = new Enemy();
+                enemy.Initialize(new Vector2(4144, 182), 9, 1);
+                enemies.Add(enemy);
+                enemy = new Enemy();
+                enemy.Initialize(new Vector2(4546, 440), 9, 1);
+                enemies.Add(enemy);
+                enemy = new Enemy();
+                enemy.Initialize(new Vector2(4786, 260), 9, 1);
+                enemies.Add(enemy);
+                enemy = new Enemy();
+                enemy.Initialize(new Vector2(5030, 264), 9, 1);
+                enemies.Add(enemy);
+                enemy = new Enemy();
+                enemy.Initialize(new Vector2(5226, 532), 9, 1);
+                enemies.Add(enemy);
+                enemy = new Enemy();
+                enemy.Initialize(new Vector2(5648, 352), 9, 1);
+                enemies.Add(enemy);
+                enemy = new Enemy();
+                enemy.Initialize(new Vector2(6328, 350), 9, 2);
+                enemies.Add(enemy);
+                enemy = new Enemy();
+                enemy.Initialize(new Vector2(6422, 260), 9, 1);
+                enemies.Add(enemy);
+                enemy = new Enemy();
+                enemy.Initialize(new Vector2(6504, 172), 9, 2);
+                enemies.Add(enemy);
+
+
+
+                #endregion
+
+                Ground ground = new Ground(new Rectangle(0, 572, 732, 69), 1);
+                grounds.Add(ground);
+                ground = new Ground(new Rectangle(822, 526, 183, 44), 1);
+                grounds.Add(ground);
+                ground = new Ground(new Rectangle(822, 526, 183, 45), 1);
+                grounds.Add(ground);
+                ground = new Ground(new Rectangle(1098, 389, 366, 45), 1);
+                grounds.Add(ground);
+                ground = new Ground(new Rectangle(1189, 207, 228, 45), 1);
+                grounds.Add(ground);
+                ground = new Ground(new Rectangle(1463, 526, 137, 45), 1);
+                grounds.Add(ground);
+                ground = new Ground(new Rectangle(1601, 343, 228, 45), 1);
+                grounds.Add(ground);
+                ground = new Ground(new Rectangle(1829, 160, 320, 45), 1);
+                grounds.Add(ground);
+                ground = new Ground(new Rectangle(2286, 572, 183, 45), 1);
+                grounds.Add(ground);
+                ground = new Ground(new Rectangle(2698, 572, 228, 45), 1);
+                grounds.Add(ground);
+                ground = new Ground(new Rectangle(2744, 207, 183, 45), 1);
+                grounds.Add(ground);
+                ground = new Ground(new Rectangle(2972, 572, 228, 45), 1);
+                grounds.Add(ground);
+                ground = new Ground(new Rectangle(3201, 388, 136, 45), 1);
+                grounds.Add(ground);
+                ground = new Ground(new Rectangle(3474, 253, 275, 45), 1);
+                grounds.Add(ground);
+                ground = new Ground(new Rectangle(4480, 480, 183, 45), 1);
+                grounds.Add(ground);
+                ground = new Ground(new Rectangle(4754, 297, 367, 45), 1);
+                grounds.Add(ground);
+                ground = new Ground(new Rectangle(5166, 572, 138, 45), 1);
+                grounds.Add(ground);
+                ground = new Ground(new Rectangle(5303, 388, 183, 45), 1);
+                grounds.Add(ground);
+                ground = new Ground(new Rectangle(5577, 388, 183, 45), 1);
+                grounds.Add(ground);
+                ground = new Ground(new Rectangle(5897, 571, 1624, 69), 1);
+                grounds.Add(ground);
+                ground = new Ground(new Rectangle(6309, 389, 200, 200), 1);
+                grounds.Add(ground);
+                ground = new Ground(new Rectangle(6399, 297, 150, 200), 1);
+                grounds.Add(ground);
+                ground = new Ground(new Rectangle(6491, 205, 92, 411), 1);
+                grounds.Add(ground);
+
+                MovingGround mGround = new MovingGround(new Rectangle(0, 0, 138, 24), 2, new Vector2(2512, 344), new Vector2(0, 1), new Vector2(0, 584), new Vector2(0, 238));
+                movingGrounds.Add(mGround);
+                mGround = new MovingGround(new Rectangle(0, 0, 138, 24), 2, new Vector2(3926, 344), new Vector2(0, -1), new Vector2(0, 584), new Vector2(0, 238));
+                movingGrounds.Add(mGround);
+                mGround = new MovingGround(new Rectangle(0, 0, 138, 24), 2, new Vector2(4293, 344), new Vector2(0, 1), new Vector2(0, 584), new Vector2(0, 238));
+                movingGrounds.Add(mGround);
+
+
+
+                QuestionBlock block = new QuestionBlock(numPlayers, 6, new Vector2(428, 411));
+                questionBlocks.Add(block);
+
+                block = new QuestionBlock(numPlayers, 1, new Vector2(1300, 80));
+                questionBlocks.Add(block);
+
+                block = new QuestionBlock(numPlayers, 6, new Vector2(1950, 60));
+                questionBlocks.Add(block);
+
+                block = new QuestionBlock(numPlayers, 2, new Vector2(1752, 242));
+                questionBlocks.Add(block);
+
+                block = new QuestionBlock(numPlayers, 4, new Vector2(3130, 475));
+                questionBlocks.Add(block);
+
+                block = new QuestionBlock(numPlayers, 0, new Vector2(4675, 380));
+                questionBlocks.Add(block);
+
+                block = new QuestionBlock(numPlayers, 1, new Vector2(5226, 480));
+                questionBlocks.Add(block);
+
+                for (int x = 0; x < 5; x++)
+                {
+                    block = new QuestionBlock(numPlayers, x, new Vector2(5950 + x*40, 400));
+                    questionBlocks.Add(block);
+                }
+
+                for (int x = 0; x < 5; x++)
+                {
+                    block = new QuestionBlock(numPlayers, x, new Vector2(5950 + x * 40, 300));
+                    questionBlocks.Add(block);
+                }
+
+                for (int x = 0; x < 5; x++)
+                {
+                    block = new QuestionBlock(numPlayers, x, new Vector2(5950 + x * 40, 200));
+                    questionBlocks.Add(block);
+                }
+
+                block = new QuestionBlock(numPlayers, 6, new Vector2(6390, 180));
+                questionBlocks.Add(block);
+
+                block = new QuestionBlock(numPlayers, 6, new Vector2(6390, 80));
+                questionBlocks.Add(block);
+
+                levelWidth = 6925 + 568;
+
+                #endregion
+            }
+
+            // game state 300 and above it is versus multiplayer
+            if (gameState > 299)
+            {
+                if (level == 0)
+                {
+                    #region Load Hyrule Temple
+
+                    for (int x = 0; x < numPlayers; x++)
+                    {
+                        players[0].lives = 3;
+                        players[0].health = 100;
+                    }
+
+                    Ground ground = new Ground(new Rectangle(40, 286, 181, 33), 1);
+                    grounds.Add(ground);
+                    ground = new Ground(new Rectangle(80, 195, 89, 9), 1);
+                    grounds.Add(ground);
+                    ground = new Ground(new Rectangle(202, 264, 47, 115), 1);
+                    grounds.Add(ground);
+                    ground = new Ground(new Rectangle(231, 358, 35, 8), 1);
+                    grounds.Add(ground);
+                    ground = new Ground(new Rectangle(310, 247, 204, 83), 1);
+                    grounds.Add(ground);
+                    ground = new Ground(new Rectangle(310, 289, 167, 57), 1);
+                    grounds.Add(ground);
+                    ground = new Ground(new Rectangle(514, 243, 47, 63), 1);
+                    grounds.Add(ground);
+                    ground = new Ground(new Rectangle(376, 140, 177, 12), 1);
+                    grounds.Add(ground);
+                    ground = new Ground(new Rectangle(264, 496, 320, 112), 1);
+                    grounds.Add(ground);
+                    ground = new Ground(new Rectangle(629, 619, 70, 24), 1);
+                    grounds.Add(ground);
+                    ground = new Ground(new Rectangle(512, 387, 139, 25), 1);
+                    grounds.Add(ground);
+                    ground = new Ground(new Rectangle(625, 319, 48, 90), 1);
+                    grounds.Add(ground);
+                    ground = new Ground(new Rectangle(675, 246, 38, 80), 1);
+                    grounds.Add(ground);
+                    ground = new Ground(new Rectangle(703, 295, 115, 27), 1);
+                    grounds.Add(ground);
+                    ground = new Ground(new Rectangle(712, 313, 381, 14), 1);
+                    grounds.Add(ground);
+                    ground = new Ground(new Rectangle(815, 221, 90, 10), 1);
+                    grounds.Add(ground);
+                    ground = new Ground(new Rectangle(675, 246, 38, 80), 1);
+                    grounds.Add(ground);
+                    ground = new Ground(new Rectangle(959, 193, 64, 8), 1);
+                    grounds.Add(ground);
+                    ground = new Ground(new Rectangle(961, 89, 64, 8), 1);
+                    grounds.Add(ground);
+
+                    players[0].Position = new Vector2(100, 100);
+                    players[1].Position = new Vector2(450, 90);
+                    players[2].Position = new Vector2(560, 338);
+                    players[3].Position = new Vector2(950, 255);
+
+                    #endregion
+                }
+            }
+        }
+
+        /// <summary>
+        /// Allows the game to perform any initialization it needs to before starting to run.
+        /// This is where it can query for any required services and load any non-graphic
+        /// related content.  Calling base.Initialize will enumerate through any components
+        /// and initialize them as well.
+        /// </summary>
+        protected override void Initialize()
+        {
+            difficulty = 1;
+
+
+
+            viewport = new Rectangle(0, 0, 1136, 640);
+            viewportGrounds = new Ground[2];
+            viewportGrounds[0] = new Ground(new Rectangle(0, 0, 128, 1280), 0);
+            viewportGrounds[1] = new Ground(new Rectangle(0, 0, 128, 1280), 0);
+            // TODO: Add your initialization logic here
+            players = new Player[4];
+            for (int i = 0; i < 4; i++)
+            {
+                players[i] = new Player();
+                players[i].loadContent(Content, GraphicsDevice);
+                gravity = 9;
+                players[i].Initialize(new Vector2(0, 0), gravity, i + 1);
+            }
+
+            base.Initialize();
+        }
+
+        /// <summary>
+        /// LoadContent will be called once per game and is the place to load
+        /// all of your content.
+        /// </summary>
+        /// 
+
+        Texture2D box;
+
+        protected override void LoadContent()
+        {
+            // Create a new SpriteBatch, which can be used to draw textures.
+            spriteBatch = new SpriteBatch(GraphicsDevice);
+
+            Enemy.loadContent(Content, GraphicsDevice);
+
+            deathSounds = new SoundEffect[23];
+            for (int x = 0; x < 23; x++)
+            {
+                String str = "Sounds/death" + (x + 1);
+                deathSounds[x] = Content.Load<SoundEffect>(str);
+            }
+
+            level_1_background = new Texture2D[9];
+            level_1_background[0] = Content.Load<Texture2D>("Sprites/level1p1");
+            level_1_background[1] = Content.Load<Texture2D>("Sprites/level1p2");
+            level_1_background[2] = Content.Load<Texture2D>("Sprites/level1p3");
+            level_1_background[3] = Content.Load<Texture2D>("Sprites/level1p4");
+            level_1_background[4] = Content.Load<Texture2D>("Sprites/level1p5");
+            level_1_background[5] = Content.Load<Texture2D>("Sprites/level1p6");
+            level_1_background[6] = Content.Load<Texture2D>("Sprites/level1p7");
+            level_1_background[7] = Content.Load<Texture2D>("Sprites/level1p8");
+            level_1_background[8] = Content.Load<Texture2D>("Sprites/level1p9");
+
+            level_3_background = new Texture2D[7];
+            level_3_background[0] = Content.Load<Texture2D>("Sprites/level3p1");
+            level_3_background[1] = Content.Load<Texture2D>("Sprites/level3p2");
+            level_3_background[2] = Content.Load<Texture2D>("Sprites/level3p3");
+            level_3_background[3] = Content.Load<Texture2D>("Sprites/level3p4");
+            level_3_background[4] = Content.Load<Texture2D>("Sprites/level3p5");
+            level_3_background[5] = Content.Load<Texture2D>("Sprites/level3p6");
+            level_3_background[6] = Content.Load<Texture2D>("Sprites/level3p7");
+
+            level_2_background = new Texture2D[7];
+            level_2_background[0] = Content.Load<Texture2D>("Sprites/level2p1");
+            level_2_background[1] = Content.Load<Texture2D>("Sprites/level2p2");
+            level_2_background[2] = Content.Load<Texture2D>("Sprites/level2p3");
+            level_2_background[3] = Content.Load<Texture2D>("Sprites/level2p4");
+            level_2_background[4] = Content.Load<Texture2D>("Sprites/level2p5");
+            level_2_background[5] = Content.Load<Texture2D>("Sprites/level2p6");
+            level_2_background[6] = Content.Load<Texture2D>("Sprites/level2p7");
+
+            pausedMenuTexture = Content.Load<Texture2D>("Sprites/pauseMenu");
+
+            hudTextures = new Texture2D[4];
+            for (int i = 0; i < 4; i++)
+            {
+                String str = "Sprites/HUD" + (i + 1);
+                hudTextures[i] = Content.Load<Texture2D>(str);
+            }
+
+            versusBackgrounds = new Texture2D[8];
+            versusForegrounds = new Texture2D[8];
+
+            versusBackgrounds[0] = Content.Load<Texture2D>("Sprites/HyruleTempleBackground");
+            versusForegrounds[0] = Content.Load<Texture2D>("Sprites/HyruleTempleForeground");
+
+            versusBackgrounds[1] = Content.Load<Texture2D>("Sprites/HyruleTempleBackground");
+            versusForegrounds[1] = Content.Load<Texture2D>("Sprites/HyruleTempleForeground");
+
+            versusBackgrounds[2] = Content.Load<Texture2D>("Sprites/HyruleTempleBackground");
+            versusForegrounds[2] = Content.Load<Texture2D>("Sprites/HyruleTempleForeground");
+            level = 0;
+
+            font = Content.Load<SpriteFont>("Fonts/8bitFont");
+            font2 = Content.Load<SpriteFont>("Fonts/8bitFont2");
+            font3 = Content.Load<SpriteFont>("Fonts/8bitFont3");
+
+            playerIcons = new Texture2D[4];
+            playerIcons[0] = Content.Load<Texture2D>("Sprites/player1");
+            playerIcons[1] = Content.Load<Texture2D>("Sprites/player2");
+            playerIcons[2] = Content.Load<Texture2D>("Sprites/player3");
+            playerIcons[3] = Content.Load<Texture2D>("Sprites/player4");
+            lakituTexture = Content.Load<Texture2D>("Sprites/lakitu");
+
+
+            movingPlatformTexture = Content.Load<Texture2D>("Sprites/movingPlatform");
+            clouds1 = Content.Load<Texture2D>("Sprites/cloudBackground");
+            clouds2 = Content.Load<Texture2D>("Sprites/cloudBackground2");
+
+            titleBackgroundTexture = Content.Load<Texture2D>("Sprites/TitleScreen");
+            controlsBackgroundTexture = Content.Load<Texture2D>("Sprites/Controls");
+            menuOptions1Texture = Content.Load<Texture2D>("Sprites/TitleMenu1");
+            menuOptions2Texture = Content.Load<Texture2D>("Sprites/TitleMenu2");
+            menuCursorTexture = Content.Load<Texture2D>("Sprites/MenuCursor");
+            mapTexture = Content.Load<Texture2D>("Sprites/mapScreen");
+            deathBlood = Content.Load<Texture2D>("Sprites/DeathBlood");
+
+            backGround = Content.Load<Texture2D>("Sprites/testBackground");
+
+            menuMusic = Content.Load<SoundEffect>("Sounds/menuMusic");
+            bossMusic = Content.Load<SoundEffect>("Sounds/bossMusic");
+            level1Music = Content.Load<SoundEffect>("Sounds/level1Music2");
+            undergroundMusic = Content.Load<SoundEffect>("Sounds/undergroundMusic");
+            pipeSound = Content.Load<SoundEffect>("Sounds/downPipe");
+            squish = Content.Load<SoundEffect>("Sounds/squish");
+
+            hyruleMusic = Content.Load<SoundEffect>("Sounds/hyruleTempleRock");
+            hyruleInstance = hyruleMusic.CreateInstance();
+            hyruleInstance.Volume = .25f;
+
+            headHitSound = Content.Load<SoundEffect>("Sounds/headHit");
+
+            menuInstance = menuMusic.CreateInstance();
+            level1Instance = level1Music.CreateInstance();
+            undergroundInstance = undergroundMusic.CreateInstance();
+            bossInstance = bossMusic.CreateInstance();
+
+            menuBackSound = Content.Load<SoundEffect>("Sounds/menuBack");
+            menuScrollSound = Content.Load<SoundEffect>("Sounds/menuScroll");
+            menuSelectSound = Content.Load<SoundEffect>("Sounds/menuSelect");
+
+            //box is only used for seeing where your grounds are
+            box = new Texture2D(GraphicsDevice, 1, 1);
+            box.SetData<Color>(new Color[] { Color.White });
+
+            PowerUp.loadContent(Content, GraphicsDevice);
+            QuestionBlock.loadContent(Content);
+
+            // TODO: use this.Content to load your game content here
+        }
+
+        /// <summary>
+        /// UnloadContent will be called once per game and is the place to unload
+        /// all content.
+        /// </summary>
+        protected override void UnloadContent()
+        {
+            // TODO: Unload any non ContentManager content here
+        }
+
+        /// <summary>
+        /// Allows the game to run logic such as updating the world,
+        /// checking for collisions, gathering input, and playing audio.
+        /// </summary>
+        /// <param name="gameTime">Provides a snapshot of timing values.</param>
+        /// 
+
+        protected override void Update(GameTime gameTime)
+        {
+
+
+            // Allow the game to exit.
+            #region Quick Game Exit
+
+            if (GamePad.GetState(PlayerIndex.One).Buttons.Back == ButtonState.Pressed || Keyboard.GetState().IsKeyDown(Keys.Escape))
+            {
+                this.Exit();
+            }
+
+            #endregion
+
+            //menu control
+            #region Menu Control
+
+            if (gameState < 100 || gameState == 200)
+            {
+                menuInstance.Volume = 0.2f;
+                menuInstance.Play();
+                level1Instance.Stop();
+                undergroundInstance.Stop();
+                hyruleInstance.Stop();
+            }
+            else
+            {
+                menuInstance.Pause();
+            }
+
+            if (gameState < 100)
+            {
+                for (int x = 0; x < 4; x++)
+                {
+                    players[x].Position.X = 0;
+                }
+            }
+
+            if (gameState == 0)
+            {
+                for (int x = 0; x < 4; x++)
+                {
+                    players[x].Position.X = 0;
+                }
+
+                KeyboardState kState = Keyboard.GetState();
+                GamePadState gState = GamePad.GetState(PlayerIndex.One);
+
+                //down
+                if ((kState.IsKeyDown(Keys.S) && oldKState.IsKeyUp(Keys.S)) || (kState.IsKeyDown(Keys.Down) && oldKState.IsKeyUp(Keys.Down))
+                    || (gState.DPad.Down == ButtonState.Pressed && oldGamePadState.DPad.Down == ButtonState.Released)
+                    || (gState.ThumbSticks.Left.Y < -.85 && oldGamePadState.ThumbSticks.Left.Y > -.85))
+                {
+                    menuOption++;
+                    if (menuOption > 3)
+                    { menuOption = 0; }
+                    menuScrollSound.Play();
+                }
+
+                //up
+                if ((kState.IsKeyDown(Keys.W) && oldKState.IsKeyUp(Keys.W)) || (kState.IsKeyDown(Keys.Up) && oldKState.IsKeyUp(Keys.Up))
+                    || (gState.DPad.Up == ButtonState.Pressed && oldGamePadState.DPad.Up == ButtonState.Released)
+                    || (gState.ThumbSticks.Left.Y > .85 && oldGamePadState.ThumbSticks.Left.Y < .85))
+                {
+                    menuOption--;
+                    if (menuOption < 0)
+                    { menuOption = 3; }
+                    menuScrollSound.Play();
+                }
+
+                //select
+                if (kState.IsKeyDown(Keys.Enter) && oldKState.IsKeyUp(Keys.Enter)
+                    || (gState.Buttons.A == ButtonState.Pressed && oldGamePadState.Buttons.A == ButtonState.Released))
+                {
+                    gameState = 1;
+                    numPlayers = menuOption + 1;
+                    if (numPlayers > 1) { players[0].soloPlay = false; } else { players[0].soloPlay = true; }
+                    menuSelectSound.Play();
+                    reInit();
+                }
+
+
+                oldKState = kState;
+                oldGamePadState = gState;
+            }
+            else if (gameState == 1)
+            {
+                players[0].Position.X = 0;
+                KeyboardState kState = Keyboard.GetState();
+                GamePadState gState = GamePad.GetState(PlayerIndex.One);
+
+                //down
+                if ((kState.IsKeyDown(Keys.S) && oldKState.IsKeyUp(Keys.S)) || (kState.IsKeyDown(Keys.Down) && oldKState.IsKeyUp(Keys.Down))
+                   || (gState.DPad.Down == ButtonState.Pressed && oldGamePadState.DPad.Down == ButtonState.Released)
+                   || (gState.ThumbSticks.Left.Y < -.85 && oldGamePadState.ThumbSticks.Left.Y > -.85))
+                {
+                    menuOption++;
+                    if (menuOption > 2)
+                    { menuOption = 0; }
+                    menuScrollSound.Play();
+                }
+
+                //up
+                if ((kState.IsKeyDown(Keys.W) && oldKState.IsKeyUp(Keys.W)) || (kState.IsKeyDown(Keys.Up) && oldKState.IsKeyUp(Keys.Up))
+                    || (gState.DPad.Up == ButtonState.Pressed && oldGamePadState.DPad.Up == ButtonState.Released)
+                    || (gState.ThumbSticks.Left.Y > .85 && oldGamePadState.ThumbSticks.Left.Y < .85))
+                {
+                    menuOption--;
+                    if (menuOption < 0)
+                    { menuOption = 2; }
+                    menuScrollSound.Play();
+                }
+
+                //select
+                if (kState.IsKeyDown(Keys.Enter) && oldKState.IsKeyUp(Keys.Enter)
+                   || (gState.Buttons.A == ButtonState.Pressed && oldGamePadState.Buttons.A == ButtonState.Released))
+                {
+                    if (menuOption == 0) { gameState = 100; }
+                    if (menuOption == 1) { gameState = 4; }
+                    if (menuOption == 2) { gameState = 200; }
+                    menuSelectSound.Play();
+                    reInit();
+                }
+
+                //back
+                if (kState.IsKeyDown(Keys.Back) && oldKState.IsKeyUp(Keys.Back)
+                    || (gState.Buttons.B == ButtonState.Pressed && oldGamePadState.Buttons.B == ButtonState.Released))
+                {
+                    menuBackSound.Play();
+                    gameState = 0;
+                    reInit();
+                }
+
+
+                oldKState = kState;
+                oldGamePadState = gState;
+            }
+            else if (gameState == 4)
+            {
+                players[0].Position.X = 0;
+                KeyboardState kState = Keyboard.GetState();
+                GamePadState gState = GamePad.GetState(PlayerIndex.One);
+
+                //select
+                if (kState.IsKeyDown(Keys.Enter) && oldKState.IsKeyUp(Keys.Enter)
+                  || (gState.Buttons.A == ButtonState.Pressed && oldGamePadState.Buttons.A == ButtonState.Released))
+                {
+                    if (menuOption == 0) { gameState = 300; }
+                    level = gameState % 300;
+                    menuSelectSound.Play();
+                    reInit();
+                }
+
+                //back
+                if (kState.IsKeyDown(Keys.Back) && oldKState.IsKeyUp(Keys.Back)
+                    || (gState.Buttons.B == ButtonState.Pressed && oldGamePadState.Buttons.B == ButtonState.Released))
+                {
+                    menuBackSound.Play();
+                    gameState = 1;
+                    reInit();
+                }
+
+
+                oldKState = kState;
+                oldGamePadState = gState;
+            }
+            else if (gameState == 200)
+            {
+                KeyboardState kState = Keyboard.GetState();
+                GamePadState gState = GamePad.GetState(PlayerIndex.One);
+
+                //back
+                if (kState.IsKeyDown(Keys.Back) && oldKState.IsKeyUp(Keys.Back)
+                    || (gState.Buttons.B == ButtonState.Pressed && oldGamePadState.Buttons.B == ButtonState.Released))
+                {
+                    menuBackSound.Play();
+                    gameState = 1;
+                    reInit();
+                }
+
+                oldKState = kState;
+                oldGamePadState = gState;
+            }
+
+            #endregion
+
+            #region Check if any players paused the game
+
+            int paused = -1;
+            for (int i = 0; i < 4; i++)
+            {
+                if (players[i].paused)
+                {
+                    paused = i;
+                    for (int x = 0; x < 4; x++)
+                    {
+                        if (x != i)
+                        {
+                            players[x].paused = false;
+                        }
+                    }
+                }
+            }
+
+            #endregion
+
+            #region Run Levels 1
+
+            if (paused < 0)
+            {
+
+                //run levels
+                #region Run Levels 2
+
+
+
+                if (gameState > 99)
+                {
+                    //Console.WriteLine("endLevel = " + endLevel);
+                    //Console.WriteLine("endTimer = " + endTimer);
+
+
+                    menuInstance.Stop();
+
+                    if (gameState == 100 || gameState == 103)
+                    {
+                        level1Instance.Play();
+                        undergroundInstance.Stop();
+                        hyruleInstance.Stop();
+                        if (isBoss == true)
+                        {
+                            undergroundInstance.Stop();
+                            hyruleInstance.Stop();
+                            level1Instance.Stop();
+                        }
+                    }
+                    else if (gameState == 101)
+                    {
+                        level1Instance.Stop();
+                        undergroundInstance.Play();
+                        hyruleInstance.Stop();
+                        if (isBoss == true && bossFight == true)
+                        {
+                            undergroundInstance.Stop();
+                            hyruleInstance.Stop();
+                            level1Instance.Stop();
+                            bossInstance.Play();
+                        }
+                    }
+                    else if (gameState > 299)
+                    {
+                        menuInstance.Stop();
+                        level1Instance.Stop();
+                        undergroundInstance.Stop();
+                        hyruleInstance.Play();
+                    }
+
+
+                    for (int r = 0; r < numPlayers; r++)
+                    {
+                        if (players[r].Position.X > 8974 && gameState == 100)
+                        { bossFight = true; }
+                        else if (players[r].Position.X > 6952 && gameState == 103)
+                        { bossFight = true; }
+
+                        if (gameState == 100 && bossFight == true && isBoss == false && win < 1)
+                        {
+                            isBoss = true;
+                            level1Instance.Stop();
+                            bossInstance.Play();
+                            Enemy enemy = new Enemy();
+                            enemy.Initialize(new Vector2(8974, 200), 9, 5);
+                            enemy.left = true;
+                            enemy.down = true;
+                            enemies.Add(enemy);
+
+                        }
+                        if (gameState == 101 && isBoss == false && win < 2)
+                        {
+                            isBoss = true;
+                            Enemy enemy = new Enemy();
+                            enemy.Initialize(new Vector2(7350, 250), 0, 6);
+                            enemies.Add(enemy);
+
+
+                        }
+                        if (gameState == 103 && bossFight == true && isBoss == false && win < 3)
+                        {
+                            isBoss = true;
+                            Enemy enemy = new Enemy();
+                            enemy.Initialize(new Vector2(6956, 120), 0, 7);
+                            enemy.seen = true;
+                            enemies.Add(enemy);
+                        }
+                        if (!endLevel)
+                        {
+                            if (gameState == 100 && win > 0)
+                            {
+                                if (players[r].myBox.Intersects(new Rectangle(9453, 441, 25, 25)))
+                                {
+                                    endLevel = true;
+                                    pipeSound.Play();
+                                    endTimer = 1500.0f;
+                                    //this.Exit();
+                                }
+                            }
+
+                            if (gameState == 101 && win > 1)
+                            {
+                                if (players[r].myBox.Intersects(new Rectangle(7658, 378, 25, 25)))
+                                {
+                                    endLevel = true;
+                                    pipeSound.Play();
+                                    endTimer = 1500.0f;
+                                    //this.Exit();
+                                }
+                            }
+                        }
+                    }
+                    //Vector2 offset = new Vector2(players[0].Position.X, players[0].Position.Y);
+                    Vector2 offset = new Vector2(viewport.X, viewport.Y);
+                    //if (viewport.X <= 568) { offset.X = 0; }
+                    //if (viewport.X >= 6700) { offset.X = 6700; }
+
+                    if (gameState < 300)
+                    {
+                        viewportGrounds[0].myBox.X = viewport.X - viewportGrounds[0].myBox.Width;
+                        viewportGrounds[0].myBox.Y = viewport.Y - viewportGrounds[0].myBox.Height / 2;
+                        viewportGrounds[1].myBox.X = viewport.X + 1136;
+                        viewportGrounds[1].myBox.Y = viewport.Y - viewportGrounds[1].myBox.Height / 2;
+                    }
+                    else
+                    {
+                        viewportGrounds[0].myBox.X = viewport.X - viewportGrounds[0].myBox.Width - 1000;
+                        viewportGrounds[0].myBox.Y = viewport.Y - viewportGrounds[0].myBox.Height / 2;
+                        viewportGrounds[1].myBox.X = viewport.X + 5000;
+                        viewportGrounds[1].myBox.Y = viewport.Y - viewportGrounds[1].myBox.Height / 2;
+                        for (int x = 0; x < numPlayers; x++)
+                        {
+                            for (int i = 0; i < numPlayers; i++)
+                            {
+                                if (i != x)
+                                {
+                                    players[x].versusBulletCollisions(players[i]);
+                                }
+                            }
+                        }
+                    }
+
+                    foreach (MovingGround mg in movingGrounds)
+                    {
+                        mg.Update();
+                    }
+
+                    foreach (Enemy e in enemies)
+                    {
+                        if (e.currentWeapon == 6)
+                        {
+                            if (e.seen == true)
+                            {
+                                bossInstance.Play();
+                                menuInstance.Stop();
+                                level1Instance.Stop();
+                                undergroundInstance.Stop();
+                            }
+                        }
+                        if (e.currentWeapon == 7)
+                        {
+                            if (e.seen == true)
+                            {
+                                bossInstance.Play();
+                                menuInstance.Stop();
+                                level1Instance.Stop();
+                                undergroundInstance.Stop();
+                            }
+                        }
+
+                        e.targetTime = (float)gameTime.ElapsedGameTime.TotalSeconds;
+                        int index = 0;
+                        Random rand = new Random();
+                        if (e.targetTime == 6)
+                        {
+                            if (numPlayers == 4)
+                                index = rand.Next(0, 3);
+                            if (numPlayers == 3)
+                                index = rand.Next(0, 2);
+                            if (numPlayers == 2)
+                                index = rand.Next(0, 1);
+                            if (numPlayers == 1)
+                                index = 0;
+                            e.targetTime = 0;
+                        }
+                        float lowest = 100000000000.0f;
+                        for (int i = 0; i < numPlayers; i++)
+                        {
+                            float dist = (float)Math.Sqrt(Math.Pow(e.Position.X - players[i].Position.X, 2) + Math.Pow(e.Position.Y - players[i].Position.Y, 2));
+                            if (dist < lowest) { lowest = dist; index = i; }
+
+                        }
+                        if (e.health == 0 || e.health < 0)
+                        {
+                            enemiesRemoval.Add(e);
+                        }
+                        e.Update(gameTime, players[index].Position);
+                    }
+                    foreach (Enemy e in enemiesRemoval)
+                    {
+
+                        if (e.currentWeapon == 5 || e.currentWeapon == 6)
+                        {
+                            isBoss = false;
+                            bossFight = false;
+                            bossInstance.Stop();
+                            win++;
+                        }
+                        if (e.currentWeapon == 7)
+                        {
+                            complete = true;
+                        }
+                        Animation ani = new Animation();
+                        ani.Initialize(deathBlood, e.Position, 0, 72, 114, 8, 30, Color.White, 1, false);
+                        Spark spark = new Spark();
+                        spark = new Spark(ani, new Vector2(0, 0));
+                        sparks.Add(spark);
+                        SoundEffectInstance squishInstance;
+                        squishInstance = squish.CreateInstance();
+                        squishInstance.Volume = 0.1f;
+                        squishInstance.Play();
+
+                        enemies.Remove(e);
+                    }
+                    enemiesRemoval.Clear();
+
+                    int numDead = 0;
+
+                    for (int i = 0; i < numPlayers; i++)
+                    {
+
+                        if (players[i].Position.Y > 700 /*&& gameState < 300*/ && players[i].Lakitu == false)
+                        {
+                            players[i].Lakitu = true;
+                            players[i].health -= 10 + (difficulty - 1) * 10;
+
+                            Random rand = new Random();
+                            int s = rand.Next(0, 22);
+                            SoundEffectInstance sound = deathSounds[s].CreateInstance();
+                            float r = rand.Next(0, 2000);
+                            r -= 1000;
+                            r /= 1000;
+                            sound.Pitch = r;
+                            sound.Play();
+                        }
+
+                        players[i].previousAPressed = players[i].aPressed;
+                        players[i].previousBPressed = players[i].bPressed;
+                        players[i].previousXPressed = players[i].xPressed;
+                        players[i].previousStartPressed = players[i].startPressed;
+                        players[i].previousBackPressed = players[i].backPressed;
+                        players[i].previousRBPressed = players[i].rightBumperPressed;
+                        players[i].previousLBPressed = players[i].leftBumperPressed;
+                        players[i].previousYPressed = players[i].yPressed;
+                        players[i].previousRightTrigger = players[i].rightTriggerPressed;
+                        switch (i)
+                        {
+                            case 0:
+                                GamePadState state = GamePad.GetState(PlayerIndex.One, GamePadDeadZone.Circular);
+                                UpdateInput(state, players[0], 1);
+                                break;
+                            case 1:
+                                GamePadState state2 = GamePad.GetState(PlayerIndex.Two, GamePadDeadZone.Circular);
+                                UpdateInput(state2, players[1], 2);
+                                break;
+                            case 2:
+                                GamePadState state3 = GamePad.GetState(PlayerIndex.Three, GamePadDeadZone.Circular);
+                                UpdateInput(state3, players[2], 3);
+                                break;
+                            case 3:
+                                GamePadState state4 = GamePad.GetState(PlayerIndex.Four, GamePadDeadZone.Circular);
+                                UpdateInput(state4, players[3], 4);
+                                break;
+                        }
+                        //players[i].Update(gameTime, offset.X - 568);
+                        players[i].Update(gameTime, (mainOffset.X - 568));
+                        for (int x = 0; x < 2; x++)
+                        {
+                            if (!players[i].Lakitu && players[i].lives > 0)
+                            {
+
+                                players[i].detectGroundCollision3(viewportGrounds[x].myBox);
+
+                                if (players[i].Position.X < viewportGrounds[0].myBox.X)
+                                {
+                                    players[i].Position.X = viewportGrounds[0].myBox.X + viewportGrounds[0].myBox.Width + 10;
+                                }
+
+                                if (players[i].Position.X > viewportGrounds[1].myBox.X)
+                                {
+                                    players[i].Position.X = viewportGrounds[1].myBox.X - 10;
+                                }
+
+
+                                players[i].detectGroundCollision3(viewportGrounds[x].myBox);
+                                foreach (Enemy e in enemies)
+                                {
+
+                                    players[i].versusBulletCollisions2(e);
+                                    players[i].detectGroundCollision(e.myBox);
+
+                                    players[i].health -= e.detectGroundCollision2(players[i].myBox);
+
+                                    e.grenCheck(players[i].myBox);
+                                    players[i].grenCheck(e.myBox);
+
+                                    if (players[i].lives < 2 && check == 0)
+                                    {
+                                        check = 1;
+                                        deaths[i]++;
+                                    }
+                                    else if (players[i].lives == 2)
+                                    {
+                                        check = 0;
+                                    }
+
+                                }
+
+
+                            }
+                        }
+
+                        if (players[i].Lakitu)
+                        {
+                            players[i].Speed = Vector2.Zero;
+
+                            double X = players[i].LakituPosition.X - players[i].Position.X;
+                            double Y = players[i].LakituPosition.Y - players[i].Position.Y;
+                            double bulletRotation = Math.Atan2(Y, X);
+
+                            float xPower = (float)Math.Cos(bulletRotation) * 3.5f;
+                            float yPower = (float)Math.Sin(bulletRotation) * 3.5f;
+
+                            players[i].Position.X += xPower;
+                            players[i].Position.Y += yPower;
+
+                            if (Math.Abs(players[i].Position.X - players[i].LakituPosition.X) < 4 && Math.Abs(players[i].Position.Y - players[i].LakituPosition.Y) < 4)
+                            {
+                                players[i].Lakitu = false;
+
+                                if (players[i].Position.X < viewportGrounds[0].myBox.X)
+                                {
+                                    players[i].Position.X = viewportGrounds[0].myBox.X + viewportGrounds[0].myBox.Width + 10;
+                                }
+
+                                if (players[i].Position.X > viewportGrounds[1].myBox.X)
+                                {
+                                    players[i].Position.X = viewportGrounds[1].myBox.X - 10;
+                                }
+                            }
+                        }
+
+                        List<PowerUp> powerUpRemoval = new List<PowerUp>();
+
+                        foreach (PowerUp p in powerUps)
+                        {
+                            if (players[i].myBox.Intersects(p.myBox))
+                            {
+                                SoundEffectInstance sound = PowerUp.powerUpSounds[p.type].CreateInstance();
+                                if (p.type != 5)
+                                {
+                                    sound.Volume = .5f;
+                                }
+
+                                for (int o = 0; o < 100; o++)
+                                {
+                                    sound.Play();
+                                }
+
+
+                                p.powerUpPlayer(players[i]);
+                                powerUpRemoval.Add(p);
+                            }
+                        }
+
+                        foreach (PowerUp p in powerUpRemoval)
+                        {
+                            powerUps.Remove(p);
+                        }
+
+                        if (players[i].lives < 1)
+                        {
+                            numDead++;
+                        }
+
+                    }
+
+                    if (numDead == numPlayers)
+                    {
+                        gameState = 1;
+                        reInit();
+                    }
+
+                    foreach (Ground g in grounds)
+                    {
+                        for (int i = 0; i < numPlayers; i++)
+                        {
+                            if (players[i].Lakitu == false)
+                            {
+                                players[i].detectGroundCollision(g.myBox);
+                            }
+                        }
+
+                        foreach (PowerUp p in powerUps)
+                        {
+                            p.detectGroundCollision(g.myBox);
+                        }
+
+                        foreach (Enemy e in enemies)
+                        {
+                            e.detectGroundCollision(g.myBox);
+                            e.detectGroundCollision2(g.myBox);
+                        }
+
+                    }
+
+                    foreach (MovingGround mg in movingGrounds)
+                    {
+                        for (int i = 0; i < numPlayers; i++)
+                        {
+                            players[i].detectGroundCollision(mg.myBox);
+                        }
+
+                        foreach (PowerUp p in powerUps)
+                        {
+                            p.detectGroundCollision(mg.myBox);
+                        }
+
+                        foreach (Enemy e in enemies)
+                        {
+                            e.detectGroundCollision(mg.myBox);
+                            e.detectGroundCollision2(mg.myBox);
+                        }
+
+                    }
+
+
+
+                    foreach (QuestionBlock q in questionBlocks)
+                    {
+                        for (int i = 0; i < numPlayers; i++)
+                        {
+                            players[i].questionBlockCollision(q);
+                        }
+
+                        foreach (Enemy e in enemies)
+                        {
+                            e.detectGroundCollision(q.myBox);
+                        }
+
+                        if (q.addPowerUp)
+                        {
+                            Random rand = new Random();
+                            float x = ((float)rand.Next(1000, 2000)) / 1000.0f;
+                            float y = (rand.Next(0, 2000) - 4000) / 1000;
+
+                            int d = rand.Next(1, 10);
+                            if (d <= 5) { x = x * -1; }
+
+                            Vector2 speed = new Vector2(x, y);
+
+                            PowerUp power = new PowerUp(new Vector2(q.myBox.X + 16, q.myBox.Y - 40), speed, PowerUp.powerUpTextures[q.powerUpType], q.powerUpType);
+
+                            powerUps.Add(power);
+
+                            q.numPowerUps--;
+
+                            q.addPowerUp = false;
+
+                            SoundEffectInstance sound = headHitSound.CreateInstance();
+                            sound.Play();
+                        }
+
+                        foreach (PowerUp p in powerUps)
+                        {
+                            p.detectGroundCollision(q.myBox);
+                        }
+                    }
+
+                    foreach (PowerUp p in powerUps)
+                    {
+                        p.Update(gameTime);
+                    }
+
+                    foreach (Foreground f in foregrounds)
+                    {
+                        f.Update(new Vector2(viewport.X + 568, 0));
+                    }
+
+                    foreach (Foreground f in backgrounds)
+                    {
+                        f.Update(new Vector2(viewport.X + 568, 0));
+                    }
+
+                    #region Spark Control
+
+                    List<Spark> sparkRemoval = new List<Spark>();
+
+                    foreach (Spark spark in sparks) // Loop through bullet List with foreach and update
+                    {
+                        spark.sparkAnimation.Position += spark.Speed;
+                        spark.sparkAnimation.Update(gameTime);
+                        if (spark.sparkAnimation.Active == false)
+                        {
+                            sparkRemoval.Add(spark);
+                        }
+                    }
+
+                    foreach (Spark spark in sparkRemoval) // Loop through bullet List with foreach and update
+                    {
+                        sparks.Remove(spark);
+                    }
+
+                    #endregion
+
+                    if (endLevel)
+                    {
+                        endTimer -= gameTime.ElapsedGameTime.Milliseconds;
+                        if (endTimer < 0)
+                        {
+                            switch (gameState)
+                            {
+                                case 100: gameState = 101; break;
+                                case 101: gameState = 103; break;
+                                case 300: gameState = 1; break;
+                            }
+
+                            reInit();
+                        }
+                    }
+
+                    if (gameState > 299)
+                    {
+                        int chance = multiplayerRandom1.Next(0, 1001);
+                        if (chance < 5)
+                        {
+                            int type = multiplayerRandom2.Next(0, 7);
+                            int xPos = multiplayerRandom3.Next(0, 3);
+                            if (xPos == 0)
+                            {
+                                int yPos = multiplayerRandom4.Next(0, 301);
+                                Vector2 position = new Vector2(-50, yPos);
+
+                                Vector2 speed = new Vector2(multiplayerRandom5.Next(3, 6), -multiplayerRandom6.Next(3, 6));
+
+                                PowerUp p = new PowerUp(position, speed, PowerUp.powerUpTextures[type], type);
+
+                                powerUps.Add(p);
+                            }
+                            if (xPos == 1)
+                            {
+                                int xPos2 = multiplayerRandom2.Next(284, 852);
+                                Vector2 position = new Vector2(xPos2, -50);
+
+                                Vector2 speed = new Vector2(-multiplayerRandom3.Next(0, 2) * multiplayerRandom4.Next(3, 6), -multiplayerRandom5.Next(0, 2) * multiplayerRandom6.Next(1, 6));
+
+                                PowerUp p = new PowerUp(position, speed, PowerUp.powerUpTextures[type], type);
+
+                                powerUps.Add(p);
+                            }
+                            if (xPos == 0)
+                            {
+                                int yPos = multiplayerRandom3.Next(0, 301);
+                                Vector2 position = new Vector2(1186, yPos);
+
+                                Vector2 speed = new Vector2(-multiplayerRandom4.Next(3, 6), -multiplayerRandom5.Next(3, 6));
+
+                                PowerUp p = new PowerUp(position, speed, PowerUp.powerUpTextures[type], type);
+
+                                powerUps.Add(p);
+                            }
+
+                        }
+                        int playersDead = 0;
+                        for (int r = 0; r < numPlayers; r++)
+                        {
+                            if (players[r].isDead && players[r].lives == 0)
+                            {
+                                playersDead++;
+                            }
+                        }
+
+                        if (playersDead + 1 == numPlayers && endLevel == false)
+                        {
+                            endLevel = true;
+                            endTimer = 3000.0f;
+                        }
+                    }
+
+
+
+                }
+
+                #endregion
+
+                //run clouds
+                #region Run Clouds
+
+                cloud1Offset -= 0.5f;
+                cloud2Offset -= 0.25f;
+
+                if (cloud1Offset <= -1136.0f)
+                {
+                    cloud1Offset = 0;
+                }
+
+                if (cloud2Offset <= -1136.0f)
+                {
+                    cloud2Offset = 0;
+                }
+
+                #endregion
+
+            }
+            else
+            {
+                #region Run Paused Menu
+
+                KeyboardState kState = Keyboard.GetState();
+                GamePadState gState = GamePad.GetState(PlayerIndex.One);
+                switch (paused)
+                {
+                    case 0: gState = GamePad.GetState(PlayerIndex.One); break;
+                    case 1: gState = GamePad.GetState(PlayerIndex.Two); break;
+                    case 2: gState = GamePad.GetState(PlayerIndex.Three); break;
+                    case 3: gState = GamePad.GetState(PlayerIndex.Four); break;
+                }
+
+                //down
+                if ((kState.IsKeyDown(Keys.S) && oldKState.IsKeyUp(Keys.S)) || (kState.IsKeyDown(Keys.Down) && oldKState.IsKeyUp(Keys.Down))
+                   || (gState.DPad.Down == ButtonState.Pressed && oldGamePadState.DPad.Down == ButtonState.Released)
+                   || (gState.ThumbSticks.Left.Y < -.85 && oldGamePadState.ThumbSticks.Left.Y > -.85))
+                {
+                    menuOption++;
+                    if (menuOption > 2)
+                    { menuOption = 0; }
+                    menuScrollSound.Play();
+                }
+
+                //up
+                if ((kState.IsKeyDown(Keys.W) && oldKState.IsKeyUp(Keys.W)) || (kState.IsKeyDown(Keys.Up) && oldKState.IsKeyUp(Keys.Up))
+                    || (gState.DPad.Up == ButtonState.Pressed && oldGamePadState.DPad.Up == ButtonState.Released)
+                    || (gState.ThumbSticks.Left.Y > .85 && oldGamePadState.ThumbSticks.Left.Y < .85))
+                {
+                    menuOption--;
+                    if (menuOption < 0)
+                    { menuOption = 2; }
+                    menuScrollSound.Play();
+                }
+
+                //select
+                if (kState.IsKeyDown(Keys.Enter) && oldKState.IsKeyUp(Keys.Enter)
+                   || (gState.Buttons.A == ButtonState.Pressed && oldGamePadState.Buttons.A == ButtonState.Released))
+                {
+                    if (menuOption == 0) { players[paused].paused = false; paused = -1; }
+                    if (menuOption == 1) { players[paused].paused = false; paused = -1; gameState = 0; reInit(); }
+                    if (menuOption == 1) { this.Exit(); }
+                    menuSelectSound.Play();
+                }
+
+                //back
+                if (kState.IsKeyDown(Keys.Back) && oldKState.IsKeyUp(Keys.Back)
+                    || (gState.Buttons.B == ButtonState.Pressed && oldGamePadState.Buttons.B == ButtonState.Released))
+                {
+                    if (menuOption == 0) { players[paused].paused = false; paused = -1; }
+                    menuBackSound.Play();
+                }
+
+
+                oldKState = kState;
+                oldGamePadState = gState;
+
+                #endregion
+            }
+
+            #endregion
+
+        }
+
+        /// <summary>
+        /// This is called when the game should draw itself.
+        /// </summary>
+        /// <param name="gameTime">Provides a snapshot of timing values.</param>
+        protected override void Draw(GameTime gameTime)
+        {
+            #region set up window and resolution and view
+
+            Resolution.BeginDraw();
+            graphics.GraphicsDevice.Clear(Color.CornflowerBlue);
+
+            Vector2[] offset = new Vector2[4];
+            mainOffset = new Vector2(0, 0);
+
+            overallScale = (float)windowWidth / (2.0f * 568.0f);
+
+            int numDead = 0;
+
+            if (gameState > 99 && gameState < 200)
+            {
+                for (int x = 0; x < numPlayers; x++)
+                {
+                    if (players[x].lives > 0)
+                    {
+                        offset[x] = new Vector2(players[x].Position.X, players[x].Position.Y);
+                        if (players[x].Position.X <= 568) { offset[x].X = 568; }
+                        //if (players[x].Position.X >= 6925) { offset[x].X = 6925; }
+                        if (players[x].Position.X >= levelWidth - 568) { offset[x].X = levelWidth - 568; }
+                        mainOffset += offset[x];
+                    }
+                    else
+                    {
+                        numDead++;
+                    }
+                }
+                mainOffset = mainOffset / (numPlayers - numDead);
+            }
+            else
+            {
+                mainOffset = new Vector2(568, 0);
+                Resolution.moveMatrix(new Vector3(0, 0, 0));
+            }
+
+            //Console.WriteLine(" Width = " + windowWidth);
+
+            if (gameState > 99 && gameState < 200)
+            {
+                Resolution.moveMatrix(new Vector3((-mainOffset.X + 568) * overallScale + 16 * (mainOffset.X / 6525), 0, 0));
+            }
+
+
+            spriteBatch.Begin(SpriteSortMode.Immediate, BlendState.AlphaBlend, null, null, null, null, Resolution.getTransformationMatrix() /*+ Matrix.CreateTranslation(-mainOffset.X + 568, 0, 0)*overallScale /*+ Matrix.CreateScale(new Vector3(scale, scale, 1))*/ );
+            viewport = new Rectangle((int)mainOffset.X - 568, 0, 1136, 640);
+
+            #endregion
+
+            #region Draw Parallax Backgrounds
+
+            for (int x = 0; x < 10; x++)
+            {
+                spriteBatch.Draw(clouds2, new Vector2(cloud2Offset + 1136 * x, 0), Color.White);
+            }
+
+            for (int x = 0; x < 10; x++)
+            {
+                spriteBatch.Draw(clouds1, new Vector2(cloud1Offset + 1136 * x, 0), Color.White);
+            }
+
+            #endregion
+
+            //Draw Menus
+            #region Draw Menus
+
+            if (gameState < 100)
+            {
+                for (int x = 0; x < 4; x++)
+                {
+                    players[x].Position.X = 0;
+                }
+
+
+                if (gameState == 0)
+                {
+                    spriteBatch.Draw(titleBackgroundTexture, new Vector2(0, 0), Color.White);
+                    spriteBatch.Draw(menuOptions2Texture, new Vector2(432, 365), Color.White);
+                    spriteBatch.Draw(menuCursorTexture, new Vector2(350, 365 + 50 * menuOption), Color.White);
+                }
+
+                if (gameState == 1)
+                {
+                    spriteBatch.Draw(titleBackgroundTexture, new Vector2(0, 0), Color.White);
+                    spriteBatch.Draw(menuOptions1Texture, new Vector2(432, 365), Color.White);
+                    spriteBatch.Draw(menuCursorTexture, new Vector2(350, 365 + 50 * menuOption), Color.White);
+                }
+
+                if (gameState == 4)
+                {
+                    spriteBatch.Draw(versusBackgrounds[menuOption], new Vector2(0, 0), Color.White);
+                    spriteBatch.Draw(versusForegrounds[menuOption], new Vector2(0, 0), Color.White);
+                    spriteBatch.Draw(mapTexture, new Vector2(0, 0), Color.White);
+                    spriteBatch.Draw(menuCursorTexture, new Vector2(315, 70 + 50 * menuOption), Color.White);
+                }
+
+                if (gameState == 200)
+                {
+                    spriteBatch.Draw(controlsBackgroundTexture, new Vector2(0, 0), Color.White);
+                }
+            }
+
+            #endregion
+
+            //Draw Levels
+            #region Draw Levels
+
+            if (gameState > 99)
+            {
+
+                foreach (Foreground f in backgrounds)
+                {
+                    f.Draw(spriteBatch);
+                }
+
+                if (gameState == 103)
+                {
+                    for (int x = 0; x < 7; x++)
+                    {
+                        spriteBatch.Draw(level_3_background[x], new Vector2(x * 1136, 0), Color.White);
+                    }
+
+                    foreach (MovingGround mg in movingGrounds)
+                    {
+                        spriteBatch.Draw(movingPlatformTexture, new Vector2(mg.myBox.X, mg.myBox.Y), Color.White);
+                    }
+                }
+                else if (gameState == 100)
+                {
+                    for (int x = 0; x < 9; x++)
+                    {
+                        spriteBatch.Draw(level_1_background[x], new Vector2(x * 1136, 0), Color.White);
+                    }
+
+                    foreach (MovingGround mg in movingGrounds)
+                    {
+                        spriteBatch.Draw(movingPlatformTexture, new Vector2(mg.myBox.X, mg.myBox.Y), Color.White);
+                    }
+                }
+                else if (gameState == 101)
+                {
+                    for (int x = 0; x < 7; x++)
+                    {
+                        spriteBatch.Draw(level_2_background[x], new Vector2(x * 1136, 0), Color.White);
+                    }
+
+                    foreach (MovingGround mg in movingGrounds)
+                    {
+                        spriteBatch.Draw(movingPlatformTexture, new Vector2(mg.myBox.X, mg.myBox.Y), Color.White);
+                    }
+                }
+                else if (gameState == 200)
+                {
+                    for (int x = 0; x < numPlayers; x++)
+                    {
+                        for (int i = 0; i < players[x].ammo.Length; i++)
+                        {
+                            players[x].ammo[i] = 100;
+                        }
+                    }
+                    spriteBatch.Draw(controlsBackgroundTexture, new Vector2(0, 0), Color.White);
+                }
+
+                if (gameState > 299)
+                {
+                    spriteBatch.Draw(versusBackgrounds[level], new Vector2(0, 0), Color.White);
+                }
+
+                foreach (Enemy e in enemies)
+                {
+
+                    e.Draw(spriteBatch);
+                }
+
+                foreach (Spark spark in sparks) // Loop through bullet List with foreach and update
+                {
+                    spark.sparkAnimation.Draw(spriteBatch);
+                }
+
+
+                for (int i = 0; i < numPlayers; i++)
+                {
+
+                    foreach (QuestionBlock b in questionBlocks)
+                    {
+                        b.Draw(spriteBatch);
+                    }
+
+                    foreach (PowerUp p in powerUps)
+                    {
+                        p.Draw(spriteBatch);
+                    }
+
+                    Color color = Color.White;
+                    switch (i)
+                    {
+                        case 0: color = Color.Red; break;
+                        case 1: color = Color.Blue; break;
+                        case 2: color = Color.Purple; break;
+                        case 3: color = Color.Yellow; break;
+                    }
+                    string lives = "" + players[i].lives;
+                    string grenades = "" + players[i].numGrenades;
+                    string ammo = "" + (int)players[i].ammo[players[i].currentWeapon];
+                    string health = "" + (int)players[i].health;
+                    string victory = "VICTORY";
+                    string numDeaths = " Deaths: ";
+
+                    if (gameState != 200)
+                    {
+                        //Primitives2D.FillRectangle(spriteBatch, new Rectangle((int)(mainOffset.X - 568) + i * 328, 0, 220, 30), new Color(0.75f, 0.75f, 0.75f, 0.75f));
+                        spriteBatch.Draw(hudTextures[i], new Vector2((mainOffset.X - 568) + i * 337, 5), Color.White);
+                        spriteBatch.DrawString(font, lives, new Vector2((int)(mainOffset.X - 568) + i * 337 + 72, 8), Color.Black);
+                        spriteBatch.DrawString(font, health, new Vector2((int)(mainOffset.X - 568) + i * 337 + 28, 33), Color.Black);
+                        spriteBatch.DrawString(font, ammo, new Vector2((int)(mainOffset.X - 568) + i * 337 + 87, 33), Color.Black);
+                        spriteBatch.DrawString(font, grenades, new Vector2((int)(mainOffset.X - 568) + i * 337 + 110, 8), Color.Black);
+                        if (complete == true)
+                       {
+                            spriteBatch.DrawString(font3, victory, new Vector2((int)(mainOffset.X) - 220, 295), Color.Black);
+                            //spriteBatch.DrawString(font2, victory, new Vector2((int)(mainOffset.X ) - 200  , 300), Color.Red);
+                            for (int f = 0; i < numPlayers; i++)
+                            {
+                                spriteBatch.DrawString(font, "Player " + (f+1) + numDeaths + deaths[f], new Vector2((int)(mainOffset.X) - 350 + f * 50, 400), Color.Red);
+                            }
+                            
+                       }
+
+                    }
+                    spriteBatch.Draw(playerIcons[i], new Vector2(players[i].Position.X - 16, players[i].Position.Y - 50), Color.White);
+                    if (players[i].Lakitu)
+                    { spriteBatch.Draw(lakituTexture, new Vector2(players[i].Position.X - 30, players[i].Position.Y - 60), Color.White); }
+                    players[i].Draw(spriteBatch);
+                }
+
+                if (gameState > 299)
+                {
+                    spriteBatch.Draw(versusForegrounds[level], new Vector2(0, 0), Color.White);
+                }
+
+                bool isPaused = false;
+                for (int i = 0; i < 4; i++)
+                {
+                    if (players[i].paused)
+                    { isPaused = true; }
+                }
+
+                foreach (Foreground f in foregrounds)
+                {
+                    f.Draw(spriteBatch);
+                }
+
+                if (isPaused)
+                {
+                    spriteBatch.Draw(pausedMenuTexture, new Vector2(viewport.X + 344, 198), Color.White);
+                    spriteBatch.Draw(menuCursorTexture, new Vector2(viewport.X + 350, 250 + 50 * menuOption), Color.White);
+                }
+            }
+            #endregion
+
+
+
+            // Draw paused string if paused
+            #region paused by
+            for (int x = 0; x < numPlayers; x++)
+            {
+                if (players[x].paused)
+                {
+                    String str = "Player " + (x + 1) + " paused the game.";
+                    //Primitives2D.FillRectangle(spriteBatch, new Rectangle((int)(mainOffset.X - 568), 0, 1136, 640), new Color(0.75f, 0.75f, 0.75f, 0.75f));
+                    spriteBatch.DrawString(font, str, new Vector2(viewport.X + 365, 205), Color.Black, 0, Vector2.Zero, 1.9f, SpriteEffects.None, 1);
+                }
+            }
+            #endregion
+
+            spriteBatch.End();
+
+            base.Draw(gameTime);
+
+        }
+    }
+}
